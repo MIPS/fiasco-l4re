@@ -1,5 +1,8 @@
 /*
- * Included from netbsd arch/mips/include/cache_r4k.h
+ * Derived in part from netbsd arch/mips/include/cache_r4k.h
+ *
+ * Copyright (C) 2015 Imagination Technologies Ltd.
+ * Author: Yann Le Du <ledu@kymasys.com>
  *
  * This file incorporates work covered by the following copyright notice:
  */
@@ -44,6 +47,10 @@
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
+#include "globalconfig.h"
+#include "asm.h"
+#include "stringify.h"
+
 /*
  * Cache definitions/operations for R4000-style caches.
  */
@@ -72,9 +79,10 @@
 #define	cache_op_r4k_line(va, op)					\
 do {									\
 	__asm volatile(						\
+		".set push						\n\t"	\
 		".set noreorder					\n\t"	\
 		"cache %1, 0(%0)				\n\t"	\
-		".set reorder"						\
+		".set pop						\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
@@ -88,12 +96,13 @@ do {									\
 #define	cache_r4k_op_8lines_16(va, op)					\
 do {									\
 	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %1, 0x00(%0); cache %1, 0x10(%0)		\n\t"	\
-		"cache %1, 0x20(%0); cache %1, 0x30(%0)		\n\t"	\
-		"cache %1, 0x40(%0); cache %1, 0x50(%0)		\n\t"	\
-		"cache %1, 0x60(%0); cache %1, 0x70(%0)		\n\t"	\
-		".set reorder"						\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
+		"cache %1, 0x000(%0); cache %1, 0x010(%0)	\n\t"	\
+		"cache %1, 0x020(%0); cache %1, 0x030(%0)	\n\t"	\
+		"cache %1, 0x040(%0); cache %1, 0x050(%0)	\n\t"	\
+		"cache %1, 0x060(%0); cache %1, 0x070(%0)	\n\t"	\
+		".set pop									\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
@@ -107,12 +116,13 @@ do {									\
 #define	cache_r4k_op_8lines_32(va, op)					\
 do {									\
 	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %1, 0x00(%0); cache %1, 0x20(%0)		\n\t"	\
-		"cache %1, 0x40(%0); cache %1, 0x60(%0)		\n\t"	\
-		"cache %1, 0x80(%0); cache %1, 0xa0(%0)		\n\t"	\
-		"cache %1, 0xc0(%0); cache %1, 0xe0(%0)		\n\t"	\
-		".set reorder"						\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
+		"cache %1, 0x000(%0); cache %1, 0x020(%0)	\n\t"	\
+		"cache %1, 0x040(%0); cache %1, 0x060(%0)	\n\t"	\
+		"cache %1, 0x080(%0); cache %1, 0x0a0(%0)	\n\t"	\
+		"cache %1, 0x0c0(%0); cache %1, 0x0e0(%0)	\n\t"	\
+		".set pop									\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
@@ -124,10 +134,12 @@ do {									\
  *	Perform the specified cache operation on 32 16-byte
  *	cache lines.
  */
+#ifndef CONFIG_CPU_MIPSR6
 #define	cache_r4k_op_32lines_16(va, op)					\
 do {									\
 	__asm volatile(						\
-		".set noreorder					\n\t"	\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
 		"cache %1, 0x000(%0); cache %1, 0x010(%0);	\n\t"	\
 		"cache %1, 0x020(%0); cache %1, 0x030(%0);	\n\t"	\
 		"cache %1, 0x040(%0); cache %1, 0x050(%0);	\n\t"	\
@@ -144,7 +156,7 @@ do {									\
 		"cache %1, 0x1a0(%0); cache %1, 0x1b0(%0);	\n\t"	\
 		"cache %1, 0x1c0(%0); cache %1, 0x1d0(%0);	\n\t"	\
 		"cache %1, 0x1e0(%0); cache %1, 0x1f0(%0);	\n\t"	\
-		".set reorder"						\
+		".set pop									\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
@@ -159,7 +171,8 @@ do {									\
 #define	cache_r4k_op_32lines_32(va, op)					\
 do {									\
 	__asm volatile(						\
-		".set noreorder					\n\t"	\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
 		"cache %1, 0x000(%0); cache %1, 0x020(%0);	\n\t"	\
 		"cache %1, 0x040(%0); cache %1, 0x060(%0);	\n\t"	\
 		"cache %1, 0x080(%0); cache %1, 0x0a0(%0);	\n\t"	\
@@ -176,170 +189,84 @@ do {									\
 		"cache %1, 0x340(%0); cache %1, 0x360(%0);	\n\t"	\
 		"cache %1, 0x380(%0); cache %1, 0x3a0(%0);	\n\t"	\
 		"cache %1, 0x3c0(%0); cache %1, 0x3e0(%0);	\n\t"	\
-		".set reorder"						\
+		".set pop									\n\t"	\
+	    :								\
+	    : "r" (va), "i" (op)					\
+	    : "memory");						\
+} while (/*CONSTCOND*/0)
+
+#else /* CONFIG_CPU_MIPSR6 */
+/*
+ * MIPS R6 changed the cache opcode and moved to a 8-bit offset field.
+ * This means we now need to increment the base register before we flush
+ * more cache lines
+ */
+
+#define	cache_r4k_op_32lines_16(va, op)					\
+do {									\
+	__asm volatile(						\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
+		".set noat									\n\t"	\
+		"cache %1, 0x000(%0); cache %1, 0x010(%0);	\n\t"	\
+		"cache %1, 0x020(%0); cache %1, 0x030(%0);	\n\t"	\
+		"cache %1, 0x040(%0); cache %1, 0x050(%0);	\n\t"	\
+		"cache %1, 0x060(%0); cache %1, 0x070(%0);	\n\t"	\
+		"cache %1, 0x080(%0); cache %1, 0x090(%0);	\n\t"	\
+		"cache %1, 0x0a0(%0); cache %1, 0x0b0(%0);	\n\t"	\
+		"cache %1, 0x0c0(%0); cache %1, 0x0d0(%0);	\n\t"	\
+		"cache %1, 0x0e0(%0); cache %1, 0x0f0(%0);	\n\t"	\
+		__stringify(LONG_ADDIU)" $1, %0, 0x100		\n\t"	\
+		"cache %1, 0x000($1); cache %1, 0x010($1);	\n\t"	\
+		"cache %1, 0x020($1); cache %1, 0x030($1);	\n\t"	\
+		"cache %1, 0x040($1); cache %1, 0x050($1);	\n\t"	\
+		"cache %1, 0x060($1); cache %1, 0x070($1);	\n\t"	\
+		"cache %1, 0x080($1); cache %1, 0x090($1);	\n\t"	\
+		"cache %1, 0x0a0($1); cache %1, 0x0b0($1);	\n\t"	\
+		"cache %1, 0x0c0($1); cache %1, 0x0d0($1);	\n\t"	\
+		"cache %1, 0x0e0($1); cache %1, 0x0f0($1);	\n\t"	\
+		".set pop									\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
 } while (/*CONSTCOND*/0)
 
 /*
- * cache_r4k_op_32lines_128:
+ * cache_r4k_op_32lines_32:
  *
- *	Perform the specified cache operation on 32 128-byte
+ *	Perform the specified cache operation on 32 32-byte
  *	cache lines.
  */
-#define	cache_r4k_op_32lines_128(va, op)				\
+#define	cache_r4k_op_32lines_32(va, op)					\
 do {									\
 	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %1, 0x0000(%0); cache %1, 0x0080(%0);	\n\t"	\
-		"cache %1, 0x0100(%0); cache %1, 0x0180(%0);	\n\t"	\
-		"cache %1, 0x0200(%0); cache %1, 0x0280(%0);	\n\t"	\
-		"cache %1, 0x0300(%0); cache %1, 0x0380(%0);	\n\t"	\
-		"cache %1, 0x0400(%0); cache %1, 0x0480(%0);	\n\t"	\
-		"cache %1, 0x0500(%0); cache %1, 0x0580(%0);	\n\t"	\
-		"cache %1, 0x0600(%0); cache %1, 0x0680(%0);	\n\t"	\
-		"cache %1, 0x0700(%0); cache %1, 0x0780(%0);	\n\t"	\
-		"cache %1, 0x0800(%0); cache %1, 0x0880(%0);	\n\t"	\
-		"cache %1, 0x0900(%0); cache %1, 0x0980(%0);	\n\t"	\
-		"cache %1, 0x0a00(%0); cache %1, 0x0a80(%0);	\n\t"	\
-		"cache %1, 0x0b00(%0); cache %1, 0x0b80(%0);	\n\t"	\
-		"cache %1, 0x0c00(%0); cache %1, 0x0c80(%0);	\n\t"	\
-		"cache %1, 0x0d00(%0); cache %1, 0x0d80(%0);	\n\t"	\
-		"cache %1, 0x0e00(%0); cache %1, 0x0e80(%0);	\n\t"	\
-		"cache %1, 0x0f00(%0); cache %1, 0x0f80(%0);	\n\t"	\
-		".set reorder"						\
+		".set push									\n\t"	\
+		".set noreorder								\n\t"	\
+		".set noat									\n\t"	\
+		"cache %1, 0x000(%0); cache %1, 0x020(%0);	\n\t"	\
+		"cache %1, 0x040(%0); cache %1, 0x060(%0);	\n\t"	\
+		"cache %1, 0x080(%0); cache %1, 0x0a0(%0);	\n\t"	\
+		"cache %1, 0x0c0(%0); cache %1, 0x0e0(%0);	\n\t"	\
+		__stringify(LONG_ADDIU)" $1, %0, 0x100		\n\t"	\
+		"cache %1, 0x000($1); cache %1, 0x020($1);	\n\t"	\
+		"cache %1, 0x040($1); cache %1, 0x060($1);	\n\t"	\
+		"cache %1, 0x080($1); cache %1, 0x0a0($1);	\n\t"	\
+		"cache %1, 0x0c0($1); cache %1, 0x0e0($1);	\n\t"	\
+		__stringify(LONG_ADDIU)" $1, $1, 0x100		\n\t"	\
+		"cache %1, 0x000($1); cache %1, 0x020($1);	\n\t"	\
+		"cache %1, 0x040($1); cache %1, 0x060($1);	\n\t"	\
+		"cache %1, 0x080($1); cache %1, 0x0a0($1);	\n\t"	\
+		"cache %1, 0x0c0($1); cache %1, 0x0e0($1);	\n\t"	\
+		__stringify(LONG_ADDIU)" $1, $1, 0x100		\n\t"	\
+		"cache %1, 0x000($1); cache %1, 0x020($1);	\n\t"	\
+		"cache %1, 0x040($1); cache %1, 0x060($1);	\n\t"	\
+		"cache %1, 0x080($1); cache %1, 0x0a0($1);	\n\t"	\
+		"cache %1, 0x0c0($1); cache %1, 0x0e0($1);	\n\t"	\
+		".set pop									\n\t"	\
 	    :								\
 	    : "r" (va), "i" (op)					\
 	    : "memory");						\
 } while (/*CONSTCOND*/0)
-
-/*
- * cache_r4k_op_16lines_16_2way:
- *
- *	Perform the specified cache operation on 16 16-byte
- * 	cache lines, 2-ways.
- */
-#define	cache_r4k_op_16lines_16_2way(va1, va2, op)			\
-do {									\
-	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %2, 0x000(%0); cache %2, 0x000(%1);	\n\t"	\
-		"cache %2, 0x010(%0); cache %2, 0x010(%1);	\n\t"	\
-		"cache %2, 0x020(%0); cache %2, 0x020(%1);	\n\t"	\
-		"cache %2, 0x030(%0); cache %2, 0x030(%1);	\n\t"	\
-		"cache %2, 0x040(%0); cache %2, 0x040(%1);	\n\t"	\
-		"cache %2, 0x050(%0); cache %2, 0x050(%1);	\n\t"	\
-		"cache %2, 0x060(%0); cache %2, 0x060(%1);	\n\t"	\
-		"cache %2, 0x070(%0); cache %2, 0x070(%1);	\n\t"	\
-		"cache %2, 0x080(%0); cache %2, 0x080(%1);	\n\t"	\
-		"cache %2, 0x090(%0); cache %2, 0x090(%1);	\n\t"	\
-		"cache %2, 0x0a0(%0); cache %2, 0x0a0(%1);	\n\t"	\
-		"cache %2, 0x0b0(%0); cache %2, 0x0b0(%1);	\n\t"	\
-		"cache %2, 0x0c0(%0); cache %2, 0x0c0(%1);	\n\t"	\
-		"cache %2, 0x0d0(%0); cache %2, 0x0d0(%1);	\n\t"	\
-		"cache %2, 0x0e0(%0); cache %2, 0x0e0(%1);	\n\t"	\
-		"cache %2, 0x0f0(%0); cache %2, 0x0f0(%1);	\n\t"	\
-		".set reorder"						\
-	    :								\
-	    : "r" (va1), "r" (va2), "i" (op)				\
-	    : "memory");						\
-} while (/*CONSTCOND*/0)
-
-/*
- * cache_r4k_op_16lines_32_2way:
- *
- *	Perform the specified cache operation on 16 32-byte
- * 	cache lines, 2-ways.
- */
-#define	cache_r4k_op_16lines_32_2way(va1, va2, op)			\
-do {									\
-	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %2, 0x000(%0); cache %2, 0x000(%1);	\n\t"	\
-		"cache %2, 0x020(%0); cache %2, 0x020(%1);	\n\t"	\
-		"cache %2, 0x040(%0); cache %2, 0x040(%1);	\n\t"	\
-		"cache %2, 0x060(%0); cache %2, 0x060(%1);	\n\t"	\
-		"cache %2, 0x080(%0); cache %2, 0x080(%1);	\n\t"	\
-		"cache %2, 0x0a0(%0); cache %2, 0x0a0(%1);	\n\t"	\
-		"cache %2, 0x0c0(%0); cache %2, 0x0c0(%1);	\n\t"	\
-		"cache %2, 0x0e0(%0); cache %2, 0x0e0(%1);	\n\t"	\
-		"cache %2, 0x100(%0); cache %2, 0x100(%1);	\n\t"	\
-		"cache %2, 0x120(%0); cache %2, 0x120(%1);	\n\t"	\
-		"cache %2, 0x140(%0); cache %2, 0x140(%1);	\n\t"	\
-		"cache %2, 0x160(%0); cache %2, 0x160(%1);	\n\t"	\
-		"cache %2, 0x180(%0); cache %2, 0x180(%1);	\n\t"	\
-		"cache %2, 0x1a0(%0); cache %2, 0x1a0(%1);	\n\t"	\
-		"cache %2, 0x1c0(%0); cache %2, 0x1c0(%1);	\n\t"	\
-		"cache %2, 0x1e0(%0); cache %2, 0x1e0(%1);	\n\t"	\
-		".set reorder"						\
-	    :								\
-	    : "r" (va1), "r" (va2), "i" (op)				\
-	    : "memory");						\
-} while (/*CONSTCOND*/0)
-
-/*
- * cache_r4k_op_8lines_16_4way:
- *
- *	Perform the specified cache operation on 8 16-byte
- * 	cache lines, 4-ways.
- */
-#define	cache_r4k_op_8lines_16_4way(va1, va2, va3, va4, op)		\
-do {									\
-	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %4, 0x000(%0); cache %4, 0x000(%1);	\n\t"	\
-		"cache %4, 0x000(%2); cache %4, 0x000(%3);	\n\t"	\
-		"cache %4, 0x010(%0); cache %4, 0x010(%1);	\n\t"	\
-		"cache %4, 0x010(%2); cache %4, 0x010(%3);	\n\t"	\
-		"cache %4, 0x020(%0); cache %4, 0x020(%1);	\n\t"	\
-		"cache %4, 0x020(%2); cache %4, 0x020(%3);	\n\t"	\
-		"cache %4, 0x030(%0); cache %4, 0x030(%1);	\n\t"	\
-		"cache %4, 0x030(%2); cache %4, 0x030(%3);	\n\t"	\
-		"cache %4, 0x040(%0); cache %4, 0x040(%1);	\n\t"	\
-		"cache %4, 0x040(%2); cache %4, 0x040(%3);	\n\t"	\
-		"cache %4, 0x050(%0); cache %4, 0x050(%1);	\n\t"	\
-		"cache %4, 0x050(%2); cache %4, 0x050(%3);	\n\t"	\
-		"cache %4, 0x060(%0); cache %4, 0x060(%1);	\n\t"	\
-		"cache %4, 0x060(%2); cache %4, 0x060(%3);	\n\t"	\
-		"cache %4, 0x070(%0); cache %4, 0x070(%1);	\n\t"	\
-		"cache %4, 0x070(%2); cache %4, 0x070(%3);	\n\t"	\
-		".set reorder"						\
-	    :								\
-	    : "r" (va1), "r" (va2), "r" (va3), "r" (va4), "i" (op)	\
-	    : "memory");						\
-} while (/*CONSTCOND*/0)
-
-/*
- * cache_r4k_op_8lines_32_4way:
- *
- *	Perform the specified cache operation on 8 32-byte
- * 	cache lines, 4-ways.
- */
-#define	cache_r4k_op_8lines_32_4way(va1, va2, va3, va4, op)		\
-do {									\
-	__asm volatile(						\
-		".set noreorder					\n\t"	\
-		"cache %4, 0x000(%0); cache %4, 0x000(%1);	\n\t"	\
-		"cache %4, 0x000(%2); cache %4, 0x000(%3);	\n\t"	\
-		"cache %4, 0x020(%0); cache %4, 0x020(%1);	\n\t"	\
-		"cache %4, 0x020(%2); cache %4, 0x020(%3);	\n\t"	\
-		"cache %4, 0x040(%0); cache %4, 0x040(%1);	\n\t"	\
-		"cache %4, 0x040(%2); cache %4, 0x040(%3);	\n\t"	\
-		"cache %4, 0x060(%0); cache %4, 0x060(%1);	\n\t"	\
-		"cache %4, 0x060(%2); cache %4, 0x060(%3);	\n\t"	\
-		"cache %4, 0x080(%0); cache %4, 0x080(%1);	\n\t"	\
-		"cache %4, 0x080(%2); cache %4, 0x080(%3);	\n\t"	\
-		"cache %4, 0x0a0(%0); cache %4, 0x0a0(%1);	\n\t"	\
-		"cache %4, 0x0a0(%2); cache %4, 0x0a0(%3);	\n\t"	\
-		"cache %4, 0x0c0(%0); cache %4, 0x0c0(%1);	\n\t"	\
-		"cache %4, 0x0c0(%2); cache %4, 0x0c0(%3);	\n\t"	\
-		"cache %4, 0x0e0(%0); cache %4, 0x0e0(%1);	\n\t"	\
-		"cache %4, 0x0e0(%2); cache %4, 0x0e0(%3);	\n\t"	\
-		".set reorder"						\
-	    :								\
-	    : "r" (va1), "r" (va2), "r" (va3), "r" (va4), "i" (op)	\
-	    : "memory");						\
-} while (/*CONSTCOND*/0)
+#endif /* CONFIG_CPU_MIPSR6 */
 
 #endif /* __CACHE_H__ */

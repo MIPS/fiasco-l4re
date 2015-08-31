@@ -9,10 +9,11 @@
  * Copyright (C) 2012  MIPS Technologies, Inc.  All rights reserved.
  */
 
-#include <asm.h>
-#include <regdef.h>
-#include <mipsregs.h>
-#include <mipsvzregs.h>
+#include "asm.h"
+#include "regdef.h"
+#include "compiler.h"
+#include "mipsregs.h"
+#include "mipsvzregs.h"
 
 /*
  * This routine sets GuestCtl1.RID to GUESTCTL1_VZ_ROOT_GUESTID
@@ -20,7 +21,6 @@
  */
 LEAF(mips32_ClearGuestRID)
 	.set	push
-	.set	mips32r2
 	.set	noreorder
 	mfc0	t0, CP0_GUESTCTL1
 	addiu	t1, zero, GUESTCTL1_VZ_ROOT_GUESTID
@@ -38,7 +38,6 @@ END(mips32_ClearGuestRID)
  */
 LEAF(mips32_SetGuestRID)
 	.set	push
-	.set	mips32r2
 	.set	noreorder
 	mfc0	t0, CP0_GUESTCTL1
 	ins 	t0, a0, GUESTCTL1_RID_SHIFT, GUESTCTL1_RID_WIDTH
@@ -55,7 +54,6 @@ END(mips32_SetGuestRID)
 */
 LEAF(mips32_SetGuestRIDtoGuestID)
 	.set	push
-	.set	mips32r2
 	.set	noreorder
 	mfc0	t0, CP0_GUESTCTL1		# Get current GuestID
 	ext 	t1, t0, GUESTCTL1_ID_SHIFT, GUESTCTL1_ID_WIDTH
@@ -73,7 +71,6 @@ END(mips32_SetGuestRIDtoGuestID)
  */
 LEAF(mips32_SetGuestID)
 	.set	push
-	.set	mips32r2
 	.set	noreorder
 	mfc0	t0, CP0_GUESTCTL1
 	ins 	t0, a0, GUESTCTL1_ID_SHIFT, GUESTCTL1_ID_WIDTH

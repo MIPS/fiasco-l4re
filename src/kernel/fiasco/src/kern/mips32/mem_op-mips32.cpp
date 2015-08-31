@@ -134,7 +134,7 @@ void Mem_op::decode_cache_config(struct mips_cache_cfg *cfg)
   }
 
   flush_multiple_lines_per_way = cfg->icache_way_size > Config::PAGE_SIZE;
-  if (config & CFG0_VI) {
+  if (config & MIPS_CONF_VI) {
     /*
      * With a virtual Icache we don't need to flush
      * multiples of the page size with index ops; we just
@@ -152,7 +152,7 @@ void Mem_op::decode_cache_config(struct mips_cache_cfg *cfg)
     cfg->icache_loopcount = cfg->icache_ways;
   }
 
-  if (config & CFG0_VI)
+  if (config & MIPS_CONF_VI)
     printf("Instruction Cache is virtual\n");
   printf("icache_stride    = %d\n", cfg->icache_stride);
   printf("icache_loopcount = %d\n", cfg->icache_loopcount);

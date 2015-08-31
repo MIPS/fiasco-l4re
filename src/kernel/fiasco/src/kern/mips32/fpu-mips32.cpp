@@ -109,12 +109,41 @@ Fpu::fcr(Fpu_state *s)
   return fpu_regs->fcsr;
 }
 
-PUBLIC static inline
+// ------------------------------------------------------------------------
+IMPLEMENTATION [mips32 && fpu && !mips_r6]:
+
+PRIVATE static inline
 bool
 Fpu::mode_64bit()
 {
   return Cp0_Status::read_status() & Cp0_Status::ST_FR;
 }
+
+PRIVATE static inline
+void
+Fpu::set_mips32r2_fp64()
+{
+  asm volatile(".set   mips32r2\n");
+  asm volatile(".set   fp=64\n");
+}
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [mips32 && fpu && mips_r6]:
+
+PRIVATE static inline
+bool
+Fpu::mode_64bit()
+{
+  return true;
+}
+
+PRIVATE static inline
+void
+Fpu::set_mips32r2_fp64()
+{}
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [mips32 && fpu]:
 
 PRIVATE static
 void
@@ -186,8 +215,7 @@ Fpu::fpu_save_16odd(Fpu_regs *r)
 {
   asm volatile(".set   push\n");
   asm volatile(".set   hardfloat\n");
-  asm volatile(".set   mips32r2\n");
-  asm volatile(".set   fp=64\n");
+  Fpu::set_mips32r2_fp64();
   asm volatile("sdc1   $f1,  %0 \n" : "=m" (r->regs[1]));
   asm volatile("sdc1   $f3,  %0 \n" : "=m" (r->regs[3]));
   asm volatile("sdc1   $f5,  %0 \n" : "=m" (r->regs[5]));
@@ -242,8 +270,7 @@ Fpu::fpu_restore_16odd(Fpu_regs *r)
 {
   asm volatile(".set   push\n");
   asm volatile(".set   hardfloat\n");
-  asm volatile(".set   mips32r2\n");
-  asm volatile(".set   fp=64\n");
+  Fpu::set_mips32r2_fp64();
   asm volatile("ldc1   $f1,  %0 \n" :: "m" (r->regs[1]));
   asm volatile("ldc1   $f3,  %0 \n" :: "m" (r->regs[3]));
   asm volatile("ldc1   $f5,  %0 \n" :: "m" (r->regs[5]));

@@ -24,10 +24,12 @@
 
 INTERFACE [mips32]:
 
+#include "config.h"
 #include "per_cpu_data.h"
 #include "initcalls.h"
 #include "types.h"
 #include "cpu-arch.h"
+#include "cpu-features.h"
 
 EXTENSION class Cpu
 {
@@ -44,13 +46,27 @@ public:
   static inline Signed32 tlbsize() { return Cpu::_cpuinfo.tlbsize; }
   static inline Signed32 vztlbsize() { return Cpu::_cpuinfo.vz.tlbsize; }
 
-  void set_isa(struct cpuinfo_mips *c, unsigned int isa);
+  /*
+   * Descriptor for a cache
+   */
+  struct cache_desc {
+    unsigned int waysize;	/* Bytes per way */
+    unsigned short sets;	/* Number of lines per set */
+    unsigned char ways;	/* Number of ways */
+    unsigned char linesz;	/* Size of line in bytes */
+    unsigned char waybit;	/* Bits to select in a cache set */
+    unsigned char flags;	/* Flags describing cache properties */
+  };
 
-  static inline Mword options() { return Cpu::_cpuinfo.options; }
-  static inline Mword extensions() { return Cpu::_cpuinfo.ases; }
+  static inline Unsigned64 options() { return Cpu::_cpuinfo.options; }
+  static inline Mword ases() { return Cpu::_cpuinfo.ases; }
   static inline Mword isa_level() { return Cpu::_cpuinfo.isa_level; }
+  static inline struct cache_desc icache() { return Cpu::_cpuinfo.icache; }
+  static inline struct cache_desc dcache() { return Cpu::_cpuinfo.dcache; }
+  static inline struct cache_desc scache() { return Cpu::_cpuinfo.scache; }
+  static inline Mword vmbits() { return Cpu::_cpuinfo.vmbits; }
 
-  static inline Mword vzoptions() { return Cpu::_cpuinfo.vz.options; }
+  static inline Unsigned64 vzoptions() { return Cpu::_cpuinfo.vz.options; }
   static inline Mword vzconfig0() { return Cpu::_cpuinfo.vz.config0; }
   static inline Mword vzconfig1() { return Cpu::_cpuinfo.vz.config1; }
   static inline Mword vzconfig2() { return Cpu::_cpuinfo.vz.config2; }
@@ -70,12 +86,10 @@ private:
   static Cpu *_boot_cpu;
   Cpu_phys_id _phys_id;
   static unsigned long _ns_per_cycle;
-  Unsigned32 processor_id;
-  const char *name;
-  
+
   struct vzase_info {
-    unsigned long   options;
-    int             tlbsize;
+    Unsigned64      options;
+    Signed32        tlbsize;
     unsigned long   config0;
     unsigned long   config1;
     unsigned long   config2;
@@ -87,13 +101,22 @@ private:
   };
 
   struct cpuinfo_mips {
-    Mword options;
+    Unsigned64 options;
+    const char *cpu_name;
     Mword ases;
-    Signed32 isa_level;
+    Mword processor_id;
+    //Mword fpu_id;
+    Mword cputype;
+    Mword isa_level;
     Signed32 tlbsize;
+    struct cache_desc icache; /* Primary I-cache */
+    struct cache_desc dcache; /* Primary D or combined I/D cache */
+    struct cache_desc scache; /* Secondary cache */
+    struct cache_desc tcache; /* Tertiary/split secondary cache */
     Mword core;
-    struct vzase_info	vz;
-    unsigned long vzguestid_mask;
+    Mword vmbits; /* Virtual memory size in bits */
+    struct vzase_info vz;
+    Mword vzguestid_mask;
     Mword has_guestctl0ext;
     Mword has_guestctl1;
     Mword has_guestctl2;
@@ -117,83 +140,6 @@ namespace Segment
   };
 };
 
-# define cpu_has_mips_1		(Cpu::isa_level() & MIPS_CPU_ISA_I)
-#ifndef cpu_has_mips_2
-# define cpu_has_mips_2		(Cpu::isa_level() & MIPS_CPU_ISA_II)
-#endif
-#ifndef cpu_has_mips_3
-# define cpu_has_mips_3		(Cpu::isa_level() & MIPS_CPU_ISA_III)
-#endif
-#ifndef cpu_has_mips_4
-# define cpu_has_mips_4		(Cpu::isa_level() & MIPS_CPU_ISA_IV)
-#endif
-#ifndef cpu_has_mips_5
-# define cpu_has_mips_5		(Cpu::isa_level() & MIPS_CPU_ISA_V)
-#endif
-# ifndef cpu_has_mips32r1
-# define cpu_has_mips32r1	(Cpu::isa_level() & MIPS_CPU_ISA_M32R1)
-# endif
-# ifndef cpu_has_mips32r2
-# define cpu_has_mips32r2	(Cpu::isa_level() & MIPS_CPU_ISA_M32R2)
-# endif
-# ifndef cpu_has_mips64r1
-# define cpu_has_mips64r1	(Cpu::isa_level() & MIPS_CPU_ISA_M64R1)
-# endif
-# ifndef cpu_has_mips64r2
-# define cpu_has_mips64r2	(Cpu::isa_level() & MIPS_CPU_ISA_M64R2)
-# endif
-
-/*
- * Shortcuts ...
- */
-#define cpu_has_mips32	(cpu_has_mips32r1 | cpu_has_mips32r2)
-#define cpu_has_mips64	(cpu_has_mips64r1 | cpu_has_mips64r2)
-#define cpu_has_mips_r1 (cpu_has_mips32r1 | cpu_has_mips64r1)
-#define cpu_has_mips_r2 (cpu_has_mips32r2 | cpu_has_mips64r2)
-#define cpu_has_mips_r	(cpu_has_mips32r1 | cpu_has_mips32r2 | \
-			 cpu_has_mips64r1 | cpu_has_mips64r2)
-
-#ifndef cpu_has_mips_r2_exec_hazard
-#define cpu_has_mips_r2_exec_hazard cpu_has_mips_r2
-#endif
-
-#define cpu_has_fpu       (Cpu::options() & MIPS_CPU_FPU)
-#define cpu_has_tlb       (Cpu::options() & MIPS_CPU_TLB)
-#define cpu_has_dsp       (Cpu::extensions() & MIPS_ASE_DSP)
-#define cpu_has_dsp2      (Cpu::extensions() & MIPS_ASE_DSP2P)
-#define cpu_has_vz        (Cpu::extensions() & MIPS_ASE_VZ)
-#define cpu_has_vzguestid (Cpu::options() & MIPS_CPU_VZGUESTID)
-#define cpu_has_vzvirtirq (Cpu::options() & MIPS_CPU_VZVIRTIRQ)
-#define cpu_has_tlbinv    (Cpu::options() & MIPS_CPU_TLBINV)
-#define cpu_has_badinstr  (Cpu::options() & MIPS_CPU_BADINSTR)
-#define cpu_has_badinstrp (Cpu::options() & MIPS_CPU_BADINSTRP)
-#define cpu_has_guestctl0ext (Cpu::has_guestctl0ext())
-#define cpu_has_guestctl1 (Cpu::has_guestctl1())
-#define cpu_has_guestctl2 (Cpu::has_guestctl2())
-
-#define cpu_vz_has_tlb      (Cpu::vzoptions() & MIPS_CPU_TLB)
-#define cpu_vz_has_config1  (Cpu::vzconfig0() & MIPS_CONF_M)
-#define cpu_vz_has_config2  (Cpu::vzconfig1() & MIPS_CONF_M)
-#define cpu_vz_has_config3  (Cpu::vzconfig2() & MIPS_CONF_M)
-#define cpu_vz_has_config4  (Cpu::vzconfig3() & MIPS_CONF_M)
-#define cpu_vz_has_config5  (Cpu::vzconfig4() & MIPS_CONF_M)
-#define cpu_vz_has_config6  (0)
-#define cpu_vz_has_config7  (1)
-
-#ifndef cpu_has_clo_clz
-#define cpu_has_clo_clz cpu_has_mips_r
-#endif
-
-#define cpu_has_veic        0
-#ifndef cpu_has_veic
-# define cpu_has_veic       (Cpu::options() & MIPS_CPU_VEIC)
-#endif
-
-#define cpu_has_vint        0
-#ifndef cpu_has_vint
-# define cpu_has_vint       (Cpu::options() & MIPS_CPU_VINT)
-#endif
-
 //------------------------------------------------------------------------------
 IMPLEMENTATION [mips32]:
 
@@ -208,8 +154,11 @@ IMPLEMENTATION [mips32]:
 #include "config.h"
 #include "mem_unit.h"
 #include "fpu.h"
+#include "kdb_ke.h"
 
 #include <cstdio>
+
+#define BUG_ON(x) assert_kdb(!(x))
 
 DEFINE_PER_CPU_P(0) Per_cpu<Cpu> Cpu::cpus(Per_cpu_data::Cpu_num);
 Cpu *Cpu::_boot_cpu;
@@ -222,112 +171,59 @@ PUBLIC static inline unsigned Cpu::phys_bits() { return 32; }
 PRIVATE static
 void Cpu::set_isa(struct cpuinfo_mips *c, unsigned int isa)
 {
-  switch (isa) {
-  case MIPS_CPU_ISA_M64R2:
-    c->isa_level |= MIPS_CPU_ISA_M32R2 | MIPS_CPU_ISA_M64R2;
-  case MIPS_CPU_ISA_M64R1:
-    c->isa_level |= MIPS_CPU_ISA_M32R1 | MIPS_CPU_ISA_M64R1;
-  case MIPS_CPU_ISA_V:
-    c->isa_level |= MIPS_CPU_ISA_V;
-  case MIPS_CPU_ISA_IV:
-    c->isa_level |= MIPS_CPU_ISA_IV;
-  case MIPS_CPU_ISA_III:
-    c->isa_level |= MIPS_CPU_ISA_I | MIPS_CPU_ISA_II |
-        MIPS_CPU_ISA_III;
-    break;
+	switch (isa) {
+	case MIPS_CPU_ISA_M64R2:
+		c->isa_level |= MIPS_CPU_ISA_M32R2 | MIPS_CPU_ISA_M64R2;
+	case MIPS_CPU_ISA_M64R1:
+		c->isa_level |= MIPS_CPU_ISA_M32R1 | MIPS_CPU_ISA_M64R1;
+	case MIPS_CPU_ISA_V:
+		c->isa_level |= MIPS_CPU_ISA_V;
+	case MIPS_CPU_ISA_IV:
+		c->isa_level |= MIPS_CPU_ISA_IV;
+	case MIPS_CPU_ISA_III:
+		c->isa_level |= MIPS_CPU_ISA_II | MIPS_CPU_ISA_III;
+		break;
 
-  case MIPS_CPU_ISA_M32R2:
-    c->isa_level |= MIPS_CPU_ISA_M32R2;
-  case MIPS_CPU_ISA_M32R1:
-    c->isa_level |= MIPS_CPU_ISA_M32R1;
-  case MIPS_CPU_ISA_II:
-    c->isa_level |= MIPS_CPU_ISA_II;
-  case MIPS_CPU_ISA_I:
-    c->isa_level |= MIPS_CPU_ISA_I;
-    break;
-  }
-}
-
-PRIVATE
-void
-Cpu::identify()
-{
-  processor_id = read_c0_prid();
-
-  switch (processor_id & 0xff0000) {
-    case PRID_COMP_MIPS:
-      switch (processor_id & 0xff00) {
-        case PRID_IMP_4KC:
-                name = "MIPS 4Kc";
-                break;
-        case PRID_IMP_4KEC:
-        case PRID_IMP_4KECR2:
-                name = "MIPS 4KEc";
-                break;
-        case PRID_IMP_4KSC:
-        case PRID_IMP_4KSD:
-                name = "MIPS 4KSc";
-                break;
-        case PRID_IMP_5KC:
-                name = "MIPS 5Kc";
-                break;
-        case PRID_IMP_5KE:
-                name = "MIPS 5KE";
-                break;
-        case PRID_IMP_20KC:
-                name = "MIPS 20Kc";
-                break;
-        case PRID_IMP_24K:
-                name = "MIPS 24Kc";
-                break;
-        case PRID_IMP_24KE:
-                name = "MIPS 24KEc";
-                break;
-        case PRID_IMP_25KF:
-                name = "MIPS 25Kc";
-                break;
-        case PRID_IMP_34K:
-                name = "MIPS 34Kc";
-                break;
-        case PRID_IMP_74K:
-                name = "MIPS 74Kc";
-                break;
-        case PRID_IMP_M14KC:
-                name = "MIPS M14Kc";
-                break;
-        case PRID_IMP_M14KEC:
-                name = "MIPS M14KEc";
-                break;
-        case PRID_IMP_1004K:
-                name = "MIPS 1004Kc";
-                break;
-        case PRID_IMP_1074K:
-                name = "MIPS 1074Kc";
-                break;
-        case PRID_IMP_INTERAPTIV_UP:
-                name = "MIPS interAptiv";
-                break;
-        case PRID_IMP_INTERAPTIV_MP:
-                name = "MIPS interAptiv (multi)";
-                break;
-        case PRID_IMP_PROAPTIV_UP:
-                name = "MIPS proAptiv";
-                break;
-        case PRID_IMP_PROAPTIV_MP:
-                name = "MIPS proAptiv (multi)";
-                break;
-        case PRID_IMP_P5600:
-                name = "MIPS P5600";
-                break;
-        case PRID_IMP_M5150:
-                name = "MIPS M5150";
-                break;
+	/* R6 incompatible with everything else */
+	case MIPS_CPU_ISA_M64R6:
+		c->isa_level |= MIPS_CPU_ISA_M32R6 | MIPS_CPU_ISA_M64R6;
+	case MIPS_CPU_ISA_M32R6:
+		c->isa_level |= MIPS_CPU_ISA_M32R6;
+	/* Break here so we don't add incompatible ISAs */
+		break;
+	case MIPS_CPU_ISA_M32R2:
+		c->isa_level |= MIPS_CPU_ISA_M32R2;
+	case MIPS_CPU_ISA_M32R1:
+		c->isa_level |= MIPS_CPU_ISA_M32R1;
+	case MIPS_CPU_ISA_II:
+		c->isa_level |= MIPS_CPU_ISA_II;
+		break;
 	}
-      break;
-    default:
-      panic("CPU not identified!");
-  }
 }
+
+PRIVATE static
+void Cpu::report_kernel(void)
+{
+	printf("Kernel:");
+#ifdef CONFIG_BIG_ENDIAN
+	printf(" EB");
+#endif
+#ifdef CONFIG_LITTLE_ENDIAN
+	printf(" EL");
+#endif
+#ifdef CONFIG_64BIT
+	printf(" 64bit, 64bit address");
+#elif defined(CONFIG_CPU_MIPS64)
+	printf(" 64bit, 32bit address");
+#else
+	printf(" 32bit");
+#endif
+#ifdef CONFIG_CPU_MIPSR6
+	printf(", R6");
+#endif
+	printf(", pagesize=%dKiB\n",(1 << (Config::PAGE_SHIFT - 10)));
+}
+
 
 PRIVATE static
 unsigned int Cpu::decode_config0(struct cpuinfo_mips *c)
@@ -337,7 +233,11 @@ unsigned int Cpu::decode_config0(struct cpuinfo_mips *c)
 
 	config0 = read_c0_config();
 
-	if (((config0 & MIPS_CONF_MT) >> 7) == 1)
+	/*
+	 * Look for Standard TLB or Dual VTLB and FTLB
+	 */
+	if ((((config0 & MIPS_CONF_MT) >> 7) == 1) ||
+	    (((config0 & MIPS_CONF_MT) >> 7) == 4))
 		c->options |= MIPS_CPU_TLB;
 
 	isa = (config0 & MIPS_CONF_AT) >> 13;
@@ -350,6 +250,9 @@ unsigned int Cpu::decode_config0(struct cpuinfo_mips *c)
 		case 1:
 			set_isa(c, MIPS_CPU_ISA_M32R2);
 			break;
+		case 2:
+			set_isa(c, MIPS_CPU_ISA_M32R6);
+			break;
 		default:
 			goto unknown;
 		}
@@ -361,6 +264,9 @@ unsigned int Cpu::decode_config0(struct cpuinfo_mips *c)
 			break;
 		case 1:
 			set_isa(c, MIPS_CPU_ISA_M64R2);
+			break;
+		case 2:
+			set_isa(c, MIPS_CPU_ISA_M64R6);
 			break;
 		default:
 			goto unknown;
@@ -448,13 +354,21 @@ unsigned int Cpu::decode_config3(struct cpuinfo_mips *c)
 		c->options |= MIPS_CPU_BADINSTR;
 	if (config3 & MIPS_CONF3_BP)
 		c->options |= MIPS_CPU_BADINSTRP;
-#if 0
-#ifdef CONFIG_CPU_MICROMIPS
-	write_c0_config3(read_c0_config3() | MIPS_CONF3_ISA_OE);
-#endif
-#endif
 	if (config3 & MIPS_CONF3_VZ)
 		c->ases |= MIPS_ASE_VZ;
+	if (config3 & MIPS_CONF3_SC)
+		c->options |= MIPS_CPU_SEGMENTS;
+	if (config3 & MIPS_CONF3_MSA)
+		c->ases |= MIPS_ASE_MSA;
+#if 0
+	/* Only tested on 32-bit cores */
+	if ((config3 & MIPS_CONF3_PW) && config_enabled(CONFIG_32BIT)) {
+		c->htw_seq = 0;
+		c->options |= MIPS_CPU_HTW;
+	}
+#endif
+	if (config3 & MIPS_CONF3_CDMM)
+		c->options |= MIPS_CPU_CDMM;
 
 	return config3 & MIPS_CONF_M;
 }
@@ -486,9 +400,21 @@ unsigned int Cpu::decode_config5(struct cpuinfo_mips *c)
 	(void)c;
 
 	config5 = read_c0_config5();
-        // disable user mode control of Status.FR 64bit FPU mode
-	config5 &= ~(MIPS_CONF5_UFR | MIPS_CONF5_UFE | MIPS_CONF5_FRE);
+	config5 &= ~(MIPS_CONF5_UFR | MIPS_CONF5_UFE);
+	// disable user mode control of Status.FR 64bit FPU mode
+	config5 &= ~(MIPS_CONF5_FRE);
 	write_c0_config5(config5);
+
+	if (config5 & MIPS_CONF5_EVA)
+		c->options |= MIPS_CPU_EVA;
+	if (config5 & MIPS_CONF5_MRP)
+		c->options |= MIPS_CPU_MAAR;
+	if (config5 & MIPS_CONF5_LLB)
+		c->options |= MIPS_CPU_RW_LLB;
+#ifdef CONFIG_XPA
+	if (config5 & MIPS_CONF5_MVH)
+		c->options |= MIPS_CPU_XPA;
+#endif
 
 	return config5 & MIPS_CONF_M;
 }
@@ -504,10 +430,13 @@ void Cpu::decode_configs(struct cpuinfo_mips *c)
 
 #if 0
 	c->scache.flags = MIPS_CACHE_NOT_PRESENT;
+
+	/* Enable FTLB if present and not disabled */
+	set_ftlb_enable(c, !mips_ftlb_disabled);
 #endif
 
 	ok = decode_config0(c);			/* Read Config registers.  */
-	//BUG_ON(!ok);				      /* Arch spec violation!	 */
+	BUG_ON(!ok);				/* Arch spec violation!	 */
 	if (ok)
 		ok = decode_config1(c);
 	if (ok)
@@ -519,16 +448,23 @@ void Cpu::decode_configs(struct cpuinfo_mips *c)
 	if (ok)
 		ok = decode_config5(c);
 
-	if (cpu_has_mips_r2)
-		c->core = read_c0_ebase() & 0x3ff;
+#if 0
+	mips_probe_watch_registers(c);
+
+	if (cpu_has_rixi) {
+		/* Enable the RIXI exceptions */
+		set_c0_pagegrain(PG_IEC);
+		back_to_back_c0_hazard();
+		/* Verify the IEC bit is set */
+		if (read_c0_pagegrain() & PG_IEC)
+			c->options |= MIPS_CPU_RIXIEX;
+	}
+#endif
+
+	if (cpu_has_mips_r2_r6)
+		c->core = get_ebase_cpunum();
 
 	probe_vz_ase(c);
-
-	if (mips_fpu_disabled)
-		c->options &= ~MIPS_CPU_FPU;
-
-	if (mips_dsp_disabled)
-		c->ases &= ~(MIPS_ASE_DSP | MIPS_ASE_DSP2P);
 }
 
 PRIVATE static
@@ -624,7 +560,7 @@ void Cpu::decode_vz_configs(struct cpuinfo_mips *c)
 	int ok;
 
 	ok = decode_vz_config0(c);		/* Read Config registers.  */
-	//BUG_ON(!ok);			/* Arch spec violation!  */
+	BUG_ON(!ok);			/* Arch spec violation!  */
 	if (ok)
 		ok = decode_vz_config1(c);
 	if (ok)
@@ -721,6 +657,148 @@ void Cpu::probe_vz_ase(struct cpuinfo_mips *c)
     
 }
 
+PRIVATE static
+void
+Cpu::cpu_probe_mips(struct cpuinfo_mips *c)
+{
+	switch (c->processor_id & PRID_IMP_MASK) {
+	case PRID_IMP_QEMU_GENERIC:
+		c->cputype = CPU_QEMU_GENERIC;
+		c->cpu_name = "MIPS GENERIC QEMU";
+		break;
+	case PRID_IMP_4KC:
+		c->cputype = CPU_4KC;
+		c->cpu_name = "MIPS 4Kc";
+		break;
+	case PRID_IMP_4KEC:
+	case PRID_IMP_4KECR2:
+		c->cputype = CPU_4KEC;
+		c->cpu_name = "MIPS 4KEc";
+		break;
+	case PRID_IMP_4KSC:
+	case PRID_IMP_4KSD:
+		c->cputype = CPU_4KSC;
+		c->cpu_name = "MIPS 4KSc";
+		break;
+	case PRID_IMP_5KC:
+		c->cputype = CPU_5KC;
+		c->cpu_name = "MIPS 5Kc";
+		break;
+	case PRID_IMP_5KE:
+		c->cputype = CPU_5KE;
+		c->cpu_name = "MIPS 5KE";
+		break;
+	case PRID_IMP_20KC:
+		c->cputype = CPU_20KC;
+		c->cpu_name = "MIPS 20Kc";
+		break;
+	case PRID_IMP_24K:
+		c->cputype = CPU_24K;
+		c->cpu_name = "MIPS 24Kc";
+		break;
+	case PRID_IMP_24KE:
+		c->cputype = CPU_24K;
+		c->cpu_name = "MIPS 24KEc";
+		break;
+	case PRID_IMP_25KF:
+		c->cputype = CPU_25KF;
+		c->cpu_name = "MIPS 25Kc";
+		break;
+	case PRID_IMP_34K:
+		c->cputype = CPU_34K;
+		c->cpu_name = "MIPS 34Kc";
+		break;
+	case PRID_IMP_74K:
+		c->cputype = CPU_74K;
+		c->cpu_name = "MIPS 74Kc";
+		break;
+	case PRID_IMP_M14KC:
+		c->cputype = CPU_M14KC;
+		c->cpu_name = "MIPS M14Kc";
+		break;
+	case PRID_IMP_M14KEC:
+		c->cputype = CPU_M14KEC;
+		c->cpu_name = "MIPS M14KEc";
+		break;
+	case PRID_IMP_1004K:
+		c->cputype = CPU_1004K;
+		c->cpu_name = "MIPS 1004Kc";
+		break;
+	case PRID_IMP_1074K:
+		c->cputype = CPU_1074K;
+		c->cpu_name = "MIPS 1074Kc";
+		break;
+	case PRID_IMP_INTERAPTIV_UP:
+		c->cputype = CPU_INTERAPTIV;
+		c->cpu_name = "MIPS interAptiv";
+		break;
+	case PRID_IMP_INTERAPTIV_MP:
+		c->cputype = CPU_INTERAPTIV;
+		c->cpu_name = "MIPS interAptiv (multi)";
+		break;
+	case PRID_IMP_PROAPTIV_UP:
+		c->cputype = CPU_PROAPTIV;
+		c->cpu_name = "MIPS proAptiv";
+		break;
+	case PRID_IMP_PROAPTIV_MP:
+		c->cputype = CPU_PROAPTIV;
+		c->cpu_name = "MIPS proAptiv (multi)";
+		break;
+	case PRID_IMP_P5600:
+		c->cputype = CPU_P5600;
+		c->cpu_name = "MIPS P5600";
+		break;
+	case PRID_IMP_M5150:
+		c->cputype = CPU_M5150;
+		c->cpu_name = "MIPS M5150";
+		break;
+	case PRID_IMP_KNIGHT:
+		c->cputype = CPU_KNIGHT;
+		c->cpu_name = "MIPS KNIGHT";
+		break;
+	case PRID_IMP_SAMURAI_UP:
+		c->cputype = CPU_SAMURAI;
+		c->cpu_name = "MIPS Samurai UP";
+		break;
+	}
+	report_kernel();
+	decode_configs(c);
+
+	//spram_config();
+}
+
+PRIVATE static
+void
+Cpu::cpu_probe()
+{
+    struct cpuinfo_mips *c = &_cpuinfo;
+
+    c->cpu_name = NULL;
+    c->processor_id = PRID_IMP_UNKNOWN;
+    //c->fpu_id = FPIR_IMP_NONE;
+    c->cputype = CPU_UNKNOWN;
+
+    c->processor_id = read_c0_prid();
+
+    switch (c->processor_id & PRID_COMP_MASK) {
+    case PRID_COMP_MIPS:
+        cpu_probe_mips(c);
+        break;
+    default:
+        break;
+    }
+
+    BUG_ON(!c->cpu_name);
+    BUG_ON(c->cputype == CPU_UNKNOWN);
+
+	if (mips_fpu_disabled)
+		c->options &= ~MIPS_CPU_FPU;
+
+	if (mips_dsp_disabled)
+		c->ases &= ~(MIPS_ASE_DSP | MIPS_ASE_DSP2P);
+}
+
+
 PUBLIC
 bool
 Cpu::if_show_infos() const
@@ -735,7 +813,7 @@ Cpu::print_infos() const
   if (if_show_infos())
     printf("CPU[%u]: %s at %lluMHz (%d TLBs)\n\n",
       cxx::int_value<Cpu_number>(id()),
-      name,
+      _cpuinfo.cpu_name,
       div32(frequency(), 1000000),
       tlbsize());
 
@@ -754,7 +832,6 @@ IMPLEMENT
 void
 Cpu::init(bool is_boot_cpu)
 {
-  identify();
   if (is_boot_cpu)
     {
       _boot_cpu = this;
@@ -781,7 +858,7 @@ Cpu::early_init()
 #ifndef CONFIG_FPU
   mips_fpu_disabled = 1;
 #endif
-  decode_configs(&_cpuinfo);
+  cpu_probe();
 
   /* Flush TLBs */
   Mem_unit::tlb_flush_slow();

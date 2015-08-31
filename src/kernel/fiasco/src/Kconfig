@@ -40,6 +40,7 @@ config MIPS32
 	select PAGE_SIZE_16KB
 	# select CONTEXT_4K
 	# select PAGE_SIZE_4KB
+	select LITTLE_ENDIAN
 
 config PPC32
 	bool "PowerPC 32 processor family (Caution: INCOMPLETE!)"
@@ -63,6 +64,10 @@ endchoice
 
 config BIG_ENDIAN
 	bool
+
+config LITTLE_ENDIAN
+	bool
+	depends on !BIG_ENDIAN
 
 choice
 	prompt "Platform"
@@ -147,18 +152,29 @@ config CAN_MIPS_CPU_MP
 config SYS_HAS_CPU_MIPS32_R2
 	bool
 
+config SYS_HAS_CPU_MIPS32_R6
+	bool
+
 # setup MIPS defines expected in various linux header files
 config CPU_MIPS32_R2
 	bool
-	default y if SYS_HAS_CPU_MIPS32_R2
+	depends on SYS_HAS_CPU_MIPS32_R2
+
+config CPU_MIPS32_R6
+	bool
+	depends on SYS_HAS_CPU_MIPS32_R6
 
 config CPU_MIPS32
 	bool
-	default y if CPU_MIPS32_R2
+	default y if CPU_MIPS32_R2 || CPU_MIPS32_R6
 
 config CPU_MIPSR2
 	bool
 	default y if CPU_MIPS32_R2
+
+config CPU_MIPSR6
+	bool
+	default y if CPU_MIPS32_R6
 
 choice
 	prompt "CPU"
@@ -167,7 +183,7 @@ choice
 	default AMD64_K8   if AMD64
 	default PPC32_603e if PPC32
 	default LEON3      if SPARC
-	default MIPS32_R2  if MIPS32
+	default CPU_MIPS32_R2  if MIPS32
 
 config ARM_PXA
 	bool "Intel XScale"
@@ -345,17 +361,22 @@ config LEON3
 	help
 	  Choose this if you have a LEON3 CPU.
 
-config MIPS32_R2
+config CPU_MIPS32_R2
 	bool "MIPS32 Release 2"
-	depends on MIPS32
+	depends on SYS_HAS_CPU_MIPS32_R2
 	help
 	  Choose this if you have a MIPS32 Release 2 CPU.
+
+config CPU_MIPS32_R6
+	bool "MIPS32 Release 6"
+	depends on SYS_HAS_CPU_MIPS32_R6
+	help
+	  Choose this if you have a MIPS32 Release 6 CPU and toolchain.
 
 endchoice
 
 config MIPS_VZ
 	bool "Enable MIPS virtualization extension"
-	depends on MIPS32
 	depends on CAN_MIPS_VZ_ASE
 	help
 	  This feature allows you to run a virtual machine monitor (VMM) on top

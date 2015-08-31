@@ -26,7 +26,7 @@
 #ifndef _ASM_MIPSVZREGS_H
 #define _ASM_MIPSVZREGS_H
 
-#include <mipsregs.h>
+#include "mipsregs.h"
 //#include <asm/war.h>
 
 #ifndef __ASSEMBLY__
@@ -142,7 +142,6 @@ __BUILD_SET_C0(guestctl2)
 									\
 	__asm__ __volatile__(						\
 	"	.set	push					\n"	\
-	"	.set	mips32r2				\n"	\
 	"	.set	noat					\n"	\
 	"	# mfgc0	$1, $" #rd ", " #sel "			\n"	\
 	"	.word	0x40600000 | (1<<16) | (" #rd "<<11) | " #sel "	\n"	\
@@ -157,7 +156,6 @@ __BUILD_SET_C0(guestctl2)
 ({									\
 	__asm__ __volatile__(						\
 	"	.set	push					\n"	\
-	"	.set	mips32r2				\n"	\
 	"	.set	noat					\n"	\
 	"	move	$1, %0					\n"	\
 	"	# mtgc0 $1," #rd ", " #sel "			\n"	\
@@ -172,9 +170,7 @@ static inline void tlb_read_guest_indexed(void)
 	__asm__ __volatile__(
 	"	.set	push\n"
 	"	.set	noreorder\n"
-	"	.set	mips32r2\n"
 	"	.word	0x42000009  # tlbgr ASM_TLBGR \n"
-	"	.set	reorder\n"
 	"	.set	pop\n");
 }
 
@@ -183,9 +179,7 @@ static inline void tlb_write_guest_indexed(void)
 	__asm__ __volatile__(
 	"	.set	push\n"
 	"	.set	noreorder\n"
-	"	.set	mips32r2\n"
 	"	.word	0x4200000a  # tlbgwi ASM_TLBGWI \n"
-	"	.set	reorder\n"
 	"	.set	pop\n");
 }
 
@@ -193,7 +187,6 @@ static inline void tlb_invalidate_asid(void)
 {
 	__asm__ __volatile__(
 	"	.set	push						\n"
-	"	.set	mips32r2					\n"
 	"	.set	noreorder					\n"
 	"	.word	0x42000003  # tlbinv ASM_TLBINV		\n"
 	"	.set	pop						\n"
@@ -204,7 +197,6 @@ static inline void tlb_invalidate_flush(void)
 {
 	__asm__ __volatile__(
 	"	.set	push						\n"
-	"	.set	mips32r2					\n"
 	"	.set	noreorder					\n"
 	"	.word	0x42000004  # tlbinvf ASM_TLBINVF		\n"
 	"	.set	pop						\n"
@@ -215,7 +207,6 @@ static inline void tlb_guest_invalidate_flush(void)
 {
 	__asm__ __volatile__(
 	"	.set	push						\n"
-	"	.set	mips32r2					\n"
 	"	.set	noreorder					\n"
 	"	.word	0x4200000c  # tlbginvf ASM_TLBGINVF		\n"
 	"	.set	pop						\n"

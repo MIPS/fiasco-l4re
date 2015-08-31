@@ -11,15 +11,19 @@
 
 #define LINUX_LIBGCC_FOR_FIASCO
 
+#include "globalconfig.h"
+
 #ifdef LINUX_LIBGCC_FOR_FIASCO
 #ifdef CONFIG_BIG_ENDIAN
 #define __BIG_ENDIAN
-#else
+#elif defined(CONFIG_LITTLE_ENDIAN)
 #define __LITTLE_ENDIAN
+#else
+#error Mips CONFIG_LITTLE_ENDIAN and CONFIG_BIG_ENDIAN both undefined.
 #endif
 #define EXPORT_SYMBOL(x)
 #else
-//#include <asm/byteorder.h>
+#include <asm/byteorder.h>
 #endif /* LINUX_LIBGCC_FOR_FIASCO */
 
 typedef int word_type __attribute__ ((mode (__word__)));

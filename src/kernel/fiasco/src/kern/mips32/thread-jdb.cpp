@@ -125,7 +125,7 @@ Thread::call_nested_trap_handler(Trap_state *ts)
   " nop                             \n"
 	" move  $sp, %[stack]             \n"
 	"1:                               \n"
-	" addi  %[tmp], %[tmp], 1         \n"
+	" addiu %[tmp], %[tmp], 1         \n"
 	" sw    %[tmp], 0(%[ntr])         \n"
 	" addu  $sp, $sp, -32             \n" //set up call frame
 	" sw    %[origstack], 28($sp)     \n"
@@ -135,7 +135,7 @@ Thread::call_nested_trap_handler(Trap_state *ts)
   " lw    %[ntr], 24($sp)           \n"
 	" lw    $sp, 28($sp)              \n"
 	" lw    %[tmp], 0(%[ntr])         \n"
-	" addi  %[tmp], %[tmp], -1        \n"
+	" addiu %[tmp], %[tmp], -1        \n"
 	" sw    %[tmp], 0(%[ntr])         \n"
   ".set pop                         \n"
 	: [origstack] "=&r" (dummy1), [tmp] "=&r" (tmp),

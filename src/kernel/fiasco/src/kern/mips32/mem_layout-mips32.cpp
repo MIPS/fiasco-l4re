@@ -87,7 +87,7 @@ IMPLEMENTATION [mips32]:
 #include "panic.h"
 #include <cstdio>
 #include <cassert>
-#include <kdb_ke.h>
+#include "kdb_ke.h"
 
 PUBLIC static inline
 Address
@@ -127,7 +127,7 @@ Mem_layout::pmem_to_phys (Address addr)
   return CPHYSADDR(addr);
 }
 
-PUBLIC static inline NEEDS[<kdb_ke.h>]
+PUBLIC static inline NEEDS["kdb_ke.h"]
 Address
 Mem_layout::pmem_to_phys (const void *ptr)
 {

@@ -17,7 +17,7 @@
 
 IMPLEMENTATION [mips32]:
 
-#include <panic.h>
+#include "panic.h"
 
 // ``unsafe'' stands for no safety according to the size of the given type.
 // There are type safe versions of the cas operations in the architecture
@@ -33,15 +33,18 @@ cas_unsafe( Mword *ptr, Mword oldval, Mword newval )
   __asm__ __volatile__(
   "     .set    push                            \n"
   "     .set    noat                            \n"
+  "     .set    " MIPS_ISA_LEVEL"               \n"
   "1:   ll      %0, %2          # __cmpxchg_asm \n"
   "     bne     %0, %z3, 2f                     \n"
+  "     .set    mips0                           \n"
   "     move    $1, %z4                         \n"
+  "     .set    " MIPS_ISA_LEVEL"               \n"
   "     sc      $1, %1                          \n"
   "     beqz    $1, 1b                          \n"
   "     .set    pop                             \n"
   "2:                                           \n"
-  : "=&r" (ret), "=R" (*ptr)
-  : "R" (*ptr), "Jr" (oldval), "Jr" (newval)
+  : "=&r" (ret), "=" GCC_OFF_SMALL_ASM() (*ptr)
+  : GCC_OFF_SMALL_ASM() (*ptr), "Jr" (oldval), "Jr" (newval)
   : "memory");
 
   // true is ok
@@ -50,7 +53,7 @@ cas_unsafe( Mword *ptr, Mword oldval, Mword newval )
 }
 
 /* dummy implement */
-inline NEEDS[<panic.h>]
+inline NEEDS["panic.h"]
 bool
 cas2_unsafe( Mword *, Mword *, Mword *)
 {
@@ -66,10 +69,12 @@ atomic_and (Mword *l, Mword mask)
 
   do {
     __asm__ __volatile__(
+    "     .set    " MIPS_ISA_LEVEL"               \n"
     "     ll      %0, %1                          \n"
     "     and     %0, %2                          \n"
     "     sc      %0, %1                          \n"
-    : "=&r" (old), "+m" (*l)
+    "     .set    mips0                           \n"
+    : "=&r" (old), "+" GCC_OFF_SMALL_ASM() (*l)
     : "Ir" (mask));
   } while (!old);
 }
@@ -82,10 +87,12 @@ atomic_or (Mword *l, Mword bits)
 
   do {
     __asm__ __volatile__(
+    "     .set    " MIPS_ISA_LEVEL"               \n"
     "     ll      %0, %1                          \n"
     "     or      %0, %2                          \n"
     "     sc      %0, %1                          \n"
-    : "=&r" (old), "+m" (*l)
+    "     .set    mips0                           \n"
+    : "=&r" (old), "+" GCC_OFF_SMALL_ASM() (*l)
     : "Ir" (bits));
   } while (!old);
 }
@@ -120,10 +127,12 @@ atomic_add (Mword *l, Mword value)
 
   do {
     __asm__ __volatile__(
+    "     .set    " MIPS_ISA_LEVEL"               \n"
     "     ll      %0, %1          # atomic_add    \n"
     "     addu    %0, %2                          \n"
     "     sc      %0, %1                          \n"
-    : "=&r" (old), "+m" (*l)
+    "     .set    mips0                           \n"
+    : "=&r" (old), "+" GCC_OFF_SMALL_ASM() (*l)
     : "Ir" (value));
   } while (!old);
 }
@@ -174,7 +183,7 @@ mp_cas_arch(Mword *m, Mword o, Mword n)
   return ret;
 }
 
-inline NEEDS[<panic.h>]
+inline NEEDS["panic.h"]
 bool mp_cas2_arch(char *, Mword, Mword, Mword, Mword)
 {
   panic("%s not implemented", __func__);

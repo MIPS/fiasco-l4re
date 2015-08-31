@@ -16,15 +16,21 @@
 #ifndef _ASM_HAZARDS_H
 #define _ASM_HAZARDS_H
 
-#if 0
-#include <linux/stringify.h>
-#else
-#include <stringify.h>
+#define LINUX_HAZARDS_FOR_FIASCO
+
+#ifdef LINUX_HAZARDS_FOR_FIASCO
 #include "globalconfig.h"
-#if !defined(CONFIG_CPU_MIPSR2)
-#error CONFIG_CPU_MIPSR2 not defined; Check that the correct hazards are being used.
+#include "stringify.h"
+#include "compiler.h"
+
+#if !defined(CONFIG_CPU_MIPSR2) && !defined(CONFIG_CPU_MIPSR6)
+#error CONFIG_CPU_MIPSR2 and CONFIG_CPU_MIPSR6 not defined; Check that the correct hazards are being used.
 #endif
-#endif
+
+#else
+#include <linux/stringify.h>
+#include <asm/compiler.h>
+#endif /* LINUX_HAZARDS_FOR_FIASCO */
 
 #define ___ssnop							\
 	sll	$0, $0, 1
@@ -35,7 +41,7 @@
 /*
  * TLB hazards
  */
-#if defined(CONFIG_CPU_MIPSR2) && !defined(CONFIG_CPU_CAVIUM_OCTEON)
+#if defined(CONFIG_CPU_MIPSR2) || defined(CONFIG_CPU_MIPSR6) && !defined(CONFIG_CPU_CAVIUM_OCTEON)
 
 /*
  * MIPSR2 defines ehb for hazard avoidance
@@ -44,7 +50,13 @@
 #define __mtc0_tlbw_hazard						\
 	___ehb
 
+#define __mtc0_tlbr_hazard						\
+	___ehb
+
 #define __tlbw_use_hazard						\
+	___ehb
+
+#define __tlb_read_hazard						\
 	___ehb
 
 #define __tlb_probe_hazard						\
@@ -72,7 +84,7 @@ do {									\
 	unsigned long tmp;						\
 									\
 	__asm__ __volatile__(						\
-	"	.set	mips64r2				\n"	\
+	"	.set " MIPS_ISA_LEVEL"				\n"	\
 	"	dla	%0, 1f					\n"	\
 	"	jr.hb	%0					\n"	\
 	"	.set	mips0					\n"	\
@@ -93,7 +105,18 @@ do {									\
 	___ssnop;							\
 	___ehb
 
+#define __mtc0_tlbr_hazard						\
+	___ssnop;							\
+	___ssnop;							\
+	___ehb
+
 #define __tlbw_use_hazard						\
+	___ssnop;							\
+	___ssnop;							\
+	___ssnop;							\
+	___ehb
+
+#define __tlb_read_hazard						\
 	___ssnop;							\
 	___ssnop;							\
 	___ssnop;							\
@@ -146,7 +169,7 @@ do {									\
 
 #define instruction_hazard()						\
 do {									\
-	if (cpu_has_mips_r2)						\
+	if (cpu_has_mips_r2_r6)						\
 		__instruction_hazard();					\
 } while (0)
 
@@ -160,7 +183,11 @@ do {									\
 
 #define __mtc0_tlbw_hazard
 
+#define __mtc0_tlbr_hazard
+
 #define __tlbw_use_hazard
+
+#define __tlb_read_hazard
 
 #define __tlb_probe_hazard
 
@@ -179,7 +206,11 @@ do {									\
  */
 #define __mtc0_tlbw_hazard
 
+#define __mtc0_tlbr_hazard
+
 #define __tlbw_use_hazard
+
+#define __tlb_read_hazard
 
 #define __tlb_probe_hazard
 
@@ -209,7 +240,16 @@ do {									\
 	nop;								\
 	nop
 
+#define __mtc0_tlbr_hazard						\
+	nop;								\
+	nop
+
 #define __tlbw_use_hazard						\
+	nop;								\
+	nop;								\
+	nop
+
+#define __tlb_read_hazard						\
 	nop;								\
 	nop;								\
 	nop
@@ -254,7 +294,7 @@ do {									\
 
 #define __disable_fpu_hazard
 
-#elif defined(CONFIG_CPU_MIPSR2)
+#elif defined(CONFIG_CPU_MIPSR2) || defined(CONFIG_CPU_MIPSR6)
 
 #define __enable_fpu_hazard						\
 	___ehb
@@ -280,7 +320,9 @@ do {									\
 #define _ssnop ___ssnop
 #define	_ehb ___ehb
 #define mtc0_tlbw_hazard __mtc0_tlbw_hazard
+#define mtc0_tlbr_hazard __mtc0_tlbr_hazard
 #define tlbw_use_hazard __tlbw_use_hazard
+#define tlb_read_hazard __tlb_read_hazard
 #define tlb_probe_hazard __tlb_probe_hazard
 #define irq_enable_hazard __irq_enable_hazard
 #define irq_disable_hazard __irq_disable_hazard
@@ -313,10 +355,26 @@ do {									\
 } while (0)
 
 
+#define mtc0_tlbr_hazard()						\
+do {									\
+	__asm__ __volatile__(						\
+	__stringify(__mtc0_tlbr_hazard)					\
+	);								\
+} while (0)
+
+
 #define tlbw_use_hazard()						\
 do {									\
 	__asm__ __volatile__(						\
 	__stringify(__tlbw_use_hazard)					\
+	);								\
+} while (0)
+
+
+#define tlb_read_hazard()						\
+do {									\
+	__asm__ __volatile__(						\
+	__stringify(__tlb_read_hazard)					\
 	);								\
 } while (0)
 

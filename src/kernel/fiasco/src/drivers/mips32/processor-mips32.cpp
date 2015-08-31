@@ -161,4 +161,4 @@ IMPLEMENTATION [mips32 && mp]:
 
 IMPLEMENT static inline
 Cpu_phys_id Proc::cpu_id()
-{ return Cpu_phys_id(read_c0_ebase() & 0x3ff); }
+{ return Cpu_phys_id(get_ebase_cpunum()); }

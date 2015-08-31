@@ -13,7 +13,6 @@ INTERFACE [mips32]:
 
 extern "C" void mips32_ClearGuestRID(void);
 extern "C" void mips32_SetGuestRID(Mword guestRID);
-extern "C" void mips32_SetGuestRIDtoGuestID(void);
 extern "C" void mips32_SetGuestID(Mword guestID);
 
 class Mem_unit : public Mmu< Mem_layout::Cache_flush_area >
@@ -31,6 +30,7 @@ public:
 //---------------------------------------------------------------------------
 IMPLEMENTATION [mips32]:
 
+#include "globalconfig.h"
 #include "mipsregs.h"
 #include "mipsvzregs.h"
 #include "processor.h"
@@ -38,7 +38,7 @@ IMPLEMENTATION [mips32]:
 #include "mem_layout.h"
 #include "warn.h"
 
-#define UNIQUE_ENTRYHI(idx) (cpu_has_tlbinv ? ((CKSEG0 + ((idx) << (Tlb_entry::PageShift + 1))) | MIPS_EHINV) : \
+#define UNIQUE_ENTRYHI(idx) (cpu_has_tlbinv ? ((CKSEG0 + ((idx) << (Tlb_entry::PageShift + 1))) | MIPS_ENTRYHI_EHINV) : \
             (CKSEG0 + ((idx) << (Tlb_entry::PageShift + 1))))
 
 #define ENTER_CRITICAL(_f)  ((_f) = Proc::cli_save())
@@ -48,16 +48,6 @@ PUBLIC static inline
 void Mem_unit::change_asid(unsigned long asid)
 {
   write_c0_entryhi(0UL | asid);
-}
-
-PUBLIC static inline NEEDS["cpu.h"]
-void Mem_unit::change_vzguestid(unsigned long vzguestid)
-{
-  (void)vzguestid;
-#ifdef CONFIG_MIPS_VZ
-  if (cpu_has_vzguestid)
-    mips32_SetGuestID(vzguestid);
-#endif
 }
 
 PUBLIC static
@@ -235,6 +225,27 @@ void Mem_unit::tlb_flush_slow(void)
 //---------------------------------------------------------------------------
 IMPLEMENTATION [mips32 && mips_vz]:
 
+PUBLIC static inline NEEDS["cpu.h"]
+void Mem_unit::change_vzguestid(unsigned long id)
+{
+  if (cpu_has_vzguestid)
+    mips32_SetGuestID(id);
+}
+
+PUBLIC static inline NEEDS["cpu.h"]
+void Mem_unit::change_vzguestrid(unsigned long rid)
+{
+  if (cpu_has_vzguestid)
+    mips32_SetGuestRID(rid);
+}
+
+PUBLIC static inline NEEDS["cpu.h"]
+void Mem_unit::clear_vzguestrid()
+{
+  if (cpu_has_vzguestid)
+    mips32_ClearGuestRID();
+}
+
 /*
  * Helper to test for a guest entry or for a guestid match.
  *
@@ -409,19 +420,27 @@ Mem_unit::local_flush_guesttlb_all(void)
 //---------------------------------------------------------------------------
 IMPLEMENTATION [mips32 && !mips_vz]:
 
+PUBLIC static inline
+void Mem_unit::change_vzguestid(unsigned long)
+{}
+
+PUBLIC static inline
+void Mem_unit::change_vzguestrid(unsigned long)
+{}
+
+PUBLIC static inline
+void Mem_unit::clear_vzguestrid()
+{}
+
 PUBLIC static
 void
 Mem_unit::local_flush_guesttlb_all(void)
-{
-  return;
-}
+{}
 
 PUBLIC static
 void
 Mem_unit::local_flush_roottlb_all_guests(void)
-{
-  return;
-}
+{}
 
 //---------------------------------------------------------------------------
 IMPLEMENTATION [mips32]:
@@ -440,12 +459,8 @@ void Mem_unit::tlb_write(const Tlb_entry &tlb_entry)
    * kernel sometimes manipulates tlb entries for the non-current VZ guest
    * (unlike Linux where KVM only manipulates the current VZ guest tlb entries).
    */
-#ifdef CONFIG_MIPS_VZ
-  if (cpu_has_vzguestid) {
-    /* Set GuestRID for root probe and write of guest TLB entry */
-    mips32_SetGuestRID((tlb_entry.guestctl1() & GUESTCTL1_RID) >> GUESTCTL1_RID_SHIFT);
-  }
-#endif
+  /* Set GuestRID for root probe and write of guest TLB entry */
+  change_vzguestrid((tlb_entry.guestctl1() & GUESTCTL1_RID) >> GUESTCTL1_RID_SHIFT);
 
   old_entryhi = read_c0_entryhi();
   write_c0_entryhi(tlb_entry.entryhi());
@@ -472,11 +487,7 @@ void Mem_unit::tlb_write(const Tlb_entry &tlb_entry)
   write_c0_entryhi(old_entryhi);
   mtc0_tlbw_hazard();
 
-#ifdef CONFIG_MIPS_VZ
-  if (cpu_has_vzguestid) {
-    mips32_ClearGuestRID();
-  }
-#endif
+  clear_vzguestrid();
 
   tlbw_use_hazard();
   EXIT_CRITICAL(flags);

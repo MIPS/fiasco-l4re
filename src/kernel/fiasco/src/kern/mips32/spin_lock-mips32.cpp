@@ -22,7 +22,6 @@ Spin_lock<Lock_t>::lock_arch()
 
   __asm__ __volatile__(
       "   .set    push            \n"
-      "   .set    mips32          \n"
       "   .set    noreorder       \n"
       "1:                         \n"
       "   ll      %[d], %[lock]   \n"
@@ -36,7 +35,6 @@ Spin_lock<Lock_t>::lock_arch()
       "   b       1b              \n" /* and retry the operation */
       "   nop                     \n"
       "3:                         \n"
-      "   .set    reorder         \n"
       "   .set    pop             \n"
       : "=m" (_lock), [tmp] "=&r" (tmp), [d] "=&r" (dummy)
       : [lock] "m" (_lock)

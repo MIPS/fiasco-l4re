@@ -60,7 +60,7 @@
 #ifndef _MIPS_ASM_H
 #define _MIPS_ASM_H
 
-#include <regdef.h>
+#include "regdef.h"
 
 /*
  * Define -pg profile entry code.
@@ -312,6 +312,14 @@ _C_LABEL(x):
 #define	REG_LI	li
 #define	REG_PROLOGUE	.set push
 #define	REG_EPILOGUE	.set pop
+
+#if _MIPS_SZLONG == 32
+#define LONG_ADDIU      addiu
+#elif _MIPS_SZLONG == 64
+#define LONG_ADDIU      daddiu
+#else
+#error _MIPS_SZLONG neither 32 nor 64
+#endif
 
 /*
  * Size of a register

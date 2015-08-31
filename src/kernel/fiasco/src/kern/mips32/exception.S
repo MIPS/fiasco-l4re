@@ -7,6 +7,7 @@
  * Author: Yann Le Du <ledu@kymasys.com>
  */
 
+#include "globalconfig.h"
 #include "tcboffset.h"
 #include "config_tcbsize.h"
 
@@ -92,7 +93,7 @@ _exceptionhandler:
     mfc0 k0, CP0_GUESTCTL0                    /* 04: check GuestCtrl0_GM bit */
     bgtz k0, 1f                               /* 05: */
     nop                                       /* 06: TBD : Can replce the nop with 03 and */
-    addi k1, k1, 256                          /* 07: need the guest exception handlers */
+    addiu k1, k1, 256                         /* 07: need the guest exception handlers */
     j 2f                                      /* 08: */
     nop                                       /* 09: branch delay slot */
 1:
@@ -174,10 +175,12 @@ _exceptionhandlerEnd:
     REG_S   t8, FRAME_T8(\fp)
     REG_S   t9, FRAME_T9(\fp)
     REG_S   ra, FRAME_RA(\fp)
+#ifndef CONFIG_CPU_MIPSR6
     mflo    t0
     REG_S   t0, FRAME_MULLO(\fp)
     mfhi    t0
     REG_S   t0, FRAME_MULHI(\fp)
+#endif
     mfc0    t0, CP0_STATUS
 #ifdef CONFIG_FPU
     ins     t0, zero, _ST0_CU1, 1   # disable FPU in trap frame on kernel
@@ -203,10 +206,12 @@ _exceptionhandlerEnd:
   .macro RESTORE_K_CONTEXT_FROM_TRAPFRAME fp
     mtc0  zero, CP0_STATUS          #zero SR just in case it has been changed
     COP0_SYNC
+#ifndef CONFIG_CPU_MIPSR6
     REG_L   t0, FRAME_MULLO(\fp)
     mtlo    t0
     REG_L   t0, FRAME_MULHI(\fp)
     mthi    t0
+#endif
     REG_L   t0, FRAME_EPC(\fp)
     mtc0    t0, CP0_EPC             #restore EPC and set return address
     REG_L   t0, FRAME_SR(\fp)
@@ -257,10 +262,12 @@ _exceptionhandlerEnd:
     mtc0  k0, CP0_STATUS            # set exception level bit
     COP0_SYNC
 
+#ifndef CONFIG_CPU_MIPSR6
     REG_L k0, FRAME_MULLO(\fp)
     mtlo  k0
     REG_L k0, FRAME_MULHI(\fp)
     mthi  k0
+#endif
     REG_L k0, FRAME_EPC(\fp)
     mtc0  k0, CP0_EPC               # set return address
 
@@ -1190,7 +1197,7 @@ resume_to_vz_guest:
 #ifdef CONFIG_MIPS_VZ
   /* Set GM bit to setup eret to VZ guest context */
   mfc0  k0, CP0_GUESTCTL0
-  addi  s0, zero, 1
+  addiu s0, zero, 1
   ins   k0, s0, GUESTCTL0_GM_SHIFT, 1
   mtc0  k0, CP0_GUESTCTL0
 

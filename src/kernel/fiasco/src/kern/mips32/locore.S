@@ -5,6 +5,7 @@
  */
 
 #include "regdef.h"
+#include "compiler.h"
 
 # define _C_LABEL(x)  x
 
@@ -145,7 +146,6 @@ NESTED(cpu_switchto, CALLFRAME_SIZ, ra)
 END(cpu_switchto)
 
 
-
 /* This routine makes changes to the instruction stream effective to the hardware.
  * It should be called after the instruction stream is written.
  * On return, the new instructions are effective.
@@ -155,13 +155,12 @@ END(cpu_switchto)
  */
 
 #define HW_SYNCI_Step	    $1
-  .text
-  .globl syncICache;
-  .ent  syncICache, 0;
+    .text
+    .globl syncICache;
+    .ent syncICache, 0;
 syncICache: ;
-  .set push
-  .set noreorder
-  .set mips32r2
+    .set push
+    .set noreorder
 
     beq     a1, 0, 20f
     nop

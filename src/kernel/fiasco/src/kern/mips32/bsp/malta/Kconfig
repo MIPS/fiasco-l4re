@@ -2,6 +2,7 @@
 # PFDESCR: MIPS Malta platform
 # PFDEPENDS: MIPS32
 # PFSELECT: SYS_HAS_CPU_MIPS32_R2
+# PFSELECT: SYS_HAS_CPU_MIPS32_R6
 
 choice
 	prompt "Malta Platform"

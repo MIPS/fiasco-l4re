@@ -26,7 +26,7 @@ IMPLEMENTATION [mips32]:
 
 #include <cassert>
 #include <cstdio>
-#include <feature.h>
+#include "feature.h"
 
 #include "globals.h"
 #include "kmem.h"
@@ -448,27 +448,50 @@ out:
   return handled;
 }
 
-/* compute_return_epc borrows heavily from arch/mips/kernel/branch.c */
-
-#define INVALID_INST      0xDEADBEEF
-static unsigned long
-compute_return_epc(Trap_state *ts, unsigned long instpc)
+PRIVATE static inline
+bool
+Thread::is_fpu_owner()
 {
-	unsigned int bit, fcr31, dspcontrol;
-	union mips_instruction insn;
-	long epc = instpc;
-	long nextpc = INVALID_INST;
+    Thread *t = current_thread();
+	assert(Fpu::fpu.current().is_owner(current()) == (t->state() & Thread_fpu_owner));
+	return (Fpu::fpu.current().is_owner(current()) && (t->state() & Thread_fpu_owner));
+}
 
-	if (epc & 3)
-		goto unaligned;
+/* borrows heavily from compute_return_epc in arch/mips/kernel/branch.c */
 
-	/*
-	 * Read the instruction
-	 */
-	insn.word = *(Unsigned32 *)epc; // TODO implement as peek
+#define EFAULT 1
+#define SIGILL 2
+#define NO_R6EMU 1
+#define BRANCH_LIKELY_TAKEN 0x0001
 
-	if (insn.word == INVALID_INST)
-		return INVALID_INST;
+/**
+ * __compute_return_epc_for_insn - Computes the return address and do emulate
+ *				    branch simulation, if required.
+ *
+ * @ts:		Pointer to Trap_state
+ * @insn:	branch instruction to decode
+ * @returns:	<0 on error, and on success
+ *		returns 0 or BRANCH_LIKELY_TAKEN as appropriate after
+ *		evaluating the branch.
+ *
+ * MIPS R6 Compact branches and forbidden slots:
+ *	Compact branches do not throw exceptions because they do
+ *	not have delay slots. The forbidden slot instruction ($PC+4)
+ *	is only executed if the branch was not taken. Otherwise the
+ *	forbidden slot is skipped entirely. This means that the
+ *	only possible reason to be here because of a MIPS R6 compact
+ *	branch instruction is that the forbidden slot has thrown one.
+ *	In that case the branch was not taken, so the EPC can be safely
+ *	set to EPC + 8.
+ */
+PRIVATE static
+int
+Thread::compute_return_epc_for_insn(Trap_state *ts,
+                                    union mips_instruction insn)
+{
+	unsigned int bit, fcr31, dspcontrol, reg;
+	long epc = ts->epc;
+	int ret = 0;
 
 	switch (insn.i_format.opcode) {
 	/*
@@ -480,7 +503,9 @@ compute_return_epc(Trap_state *ts, unsigned long instpc)
 			ts->r[insn.r_format.rd] = epc + 8;
 			/* Fall through */
 		case jr_op:
-			nextpc = ts->r[insn.r_format.rs];
+			if (NO_R6EMU && insn.r_format.func == jr_op)
+				goto sigill_r6;
+			ts->epc = ts->r[insn.r_format.rs];
 			break;
 		}
 		break;
@@ -492,46 +517,103 @@ compute_return_epc(Trap_state *ts, unsigned long instpc)
 	 */
 	case bcond_op:
 		switch (insn.i_format.rt) {
-		case bltz_op:
 		case bltzl_op:
-			if ((long)ts->r[insn.i_format.rs] < 0)
+			if (NO_R6EMU)
+				goto sigill_r6;
+		case bltz_op:
+			if ((long)ts->r[insn.i_format.rs] < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
-			else
+				if (insn.i_format.rt == bltzl_op)
+					ret = BRANCH_LIKELY_TAKEN;
+			} else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
 			break;
 
-		case bgez_op:
 		case bgezl_op:
-			if ((long)ts->r[insn.i_format.rs] >= 0)
+			if (NO_R6EMU)
+				goto sigill_r6;
+		case bgez_op:
+			if ((long)ts->r[insn.i_format.rs] >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
-			else
+				if (insn.i_format.rt == bgezl_op)
+					ret = BRANCH_LIKELY_TAKEN;
+			} else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
 			break;
 
 		case bltzal_op:
 		case bltzall_op:
+			if (NO_R6EMU && (insn.i_format.rs ||
+			    insn.i_format.rt == bltzall_op)) {
+				ret = -SIGILL;
+				break;
+			}
 			ts->r[31] = epc + 8;
-			if ((long)ts->r[insn.i_format.rs] < 0)
+			/*
+			 * OK we are here either because we hit a NAL
+			 * instruction or because we are emulating an
+			 * old bltzal{,l} one. Lets figure out what the
+			 * case really is.
+			 */
+			if (!insn.i_format.rs) {
+				/*
+				 * NAL or BLTZAL with rs == 0
+				 * Doesn't matter if we are R6 or not. The
+				 * result is the same
+				 */
+				ts->epc += 4 +
+					(insn.i_format.simmediate << 2);
+				break;
+			}
+			/* Now do the real thing for non-R6 BLTZAL{,L} */
+			if ((long)ts->r[insn.i_format.rs] < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
-			else
+				if (insn.i_format.rt == bltzall_op)
+					ret = BRANCH_LIKELY_TAKEN;
+			} else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
 			break;
 
 		case bgezal_op:
 		case bgezall_op:
+			if (NO_R6EMU && (insn.i_format.rs ||
+			    insn.i_format.rt == bgezall_op)) {
+				ret = -SIGILL;
+				break;
+			}
 			ts->r[31] = epc + 8;
-			if ((long)ts->r[insn.i_format.rs] >= 0)
+			/*
+			 * OK we are here either because we hit a BAL
+			 * instruction or because we are emulating an
+			 * old bgezal{,l} one. Lets figure out what the
+			 * case really is.
+			 */
+			if (!insn.i_format.rs) {
+				/*
+				 * BAL or BGEZAL with rs == 0
+				 * Doesn't matter if we are R6 or not. The
+				 * result is the same
+				 */
+				ts->epc += 4 +
+					(insn.i_format.simmediate << 2);
+				break;
+			}
+			/* Now do the real thing for non-R6 BGEZAL{,L} */
+			if ((long)ts->r[insn.i_format.rs] >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
-			else
+				if (insn.i_format.rt == bgezall_op)
+					ret = BRANCH_LIKELY_TAKEN;
+			} else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
 			break;
+
 		case bposge32_op:
 			if (!cpu_has_dsp)
-				goto sigill;
+				goto sigill_dsp;
 
 			dspcontrol = rddsp(0x01);
 
@@ -539,7 +621,7 @@ compute_return_epc(Trap_state *ts, unsigned long instpc)
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 			} else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
 			break;
 		}
 		break;
@@ -548,56 +630,122 @@ compute_return_epc(Trap_state *ts, unsigned long instpc)
 	 * These are unconditional and in j_format.
 	 */
 	case jal_op:
-		ts->r[31] = instpc + 8;
+		ts->r[31] = ts->epc + 8;
 	case j_op:
 		epc += 4;
 		epc >>= 28;
 		epc <<= 28;
 		epc |= (insn.j_format.target << 2);
-		nextpc = epc;
+		ts->epc = epc;
+#if 1 // isa16 mode not implemented
+		if (insn.i_format.opcode == jalx_op)
+            ret = -SIGILL;
+#else
+		if (insn.i_format.opcode == jalx_op)
+			set_isa16_mode(ts->epc);
+#endif
 		break;
 
 	/*
 	 * These are conditional and in i_format.
 	 */
-	case beq_op:
 	case beql_op:
+		if (NO_R6EMU)
+			goto sigill_r6;
+	case beq_op:
 		if (ts->r[insn.i_format.rs] ==
-		    ts->r[insn.i_format.rt])
+		    ts->r[insn.i_format.rt]) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
-		else
+			if (insn.i_format.opcode == beql_op)
+				ret = BRANCH_LIKELY_TAKEN;
+		} else
 			epc += 8;
-		nextpc = epc;
+		ts->epc = epc;
 		break;
 
-	case bne_op:
 	case bnel_op:
+		if (NO_R6EMU)
+			goto sigill_r6;
+	case bne_op:
 		if (ts->r[insn.i_format.rs] !=
-		    ts->r[insn.i_format.rt])
+		    ts->r[insn.i_format.rt]) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
-		else
+			if (insn.i_format.opcode == bnel_op)
+				ret = BRANCH_LIKELY_TAKEN;
+		} else
 			epc += 8;
-		nextpc = epc;
+		ts->epc = epc;
 		break;
 
-	case blez_op: /* not really i_format */
-	case blezl_op:
+	case blezl_op: /* not really i_format */
+		if (!insn.i_format.rt && NO_R6EMU)
+			goto sigill_r6;
+	case blez_op:
+		/*
+		 * Compact branches for R6 for the
+		 * blez and blezl opcodes.
+		 * BLEZ  | rs = 0 | rt != 0  == BLEZALC
+		 * BLEZ  | rs = rt != 0      == BGEZALC
+		 * BLEZ  | rs != 0 | rt != 0 == BGEUC
+		 * BLEZL | rs = 0 | rt != 0  == BLEZC
+		 * BLEZL | rs = rt != 0      == BGEZC
+		 * BLEZL | rs != 0 | rt != 0 == BGEC
+		 *
+		 * For real BLEZ{,L}, rt is always 0.
+		 */
+
+		if (cpu_has_mips_r6 && insn.i_format.rt) {
+			if ((insn.i_format.opcode == blez_op) &&
+			    ((!insn.i_format.rs && insn.i_format.rt) ||
+			     (insn.i_format.rs == insn.i_format.rt)))
+				ts->r[31] = epc + 4;
+			ts->epc += 8;
+			break;
+		}
 		/* rt field assumed to be zero */
-		if ((long)ts->r[insn.i_format.rs] <= 0)
+		if ((long)ts->r[insn.i_format.rs] <= 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
-		else
+			if (insn.i_format.opcode == blezl_op)
+				ret = BRANCH_LIKELY_TAKEN;
+		} else
 			epc += 8;
-		nextpc = epc;
+		ts->epc = epc;
 		break;
 
-	case bgtz_op:
 	case bgtzl_op:
+		if (!insn.i_format.rt && NO_R6EMU)
+			goto sigill_r6;
+	case bgtz_op:
+		/*
+		 * Compact branches for R6 for the
+		 * bgtz and bgtzl opcodes.
+		 * BGTZ  | rs = 0 | rt != 0  == BGTZALC
+		 * BGTZ  | rs = rt != 0      == BLTZALC
+		 * BGTZ  | rs != 0 | rt != 0 == BLTUC
+		 * BGTZL | rs = 0 | rt != 0  == BGTZC
+		 * BGTZL | rs = rt != 0      == BLTZC
+		 * BGTZL | rs != 0 | rt != 0 == BLTC
+		 *
+		 * *ZALC varint for BGTZ &&& rt != 0
+		 * For real GTZ{,L}, rt is always 0.
+		 */
+		if (cpu_has_mips_r6 && insn.i_format.rt) {
+			if ((insn.i_format.opcode == blez_op) &&
+			    ((!insn.i_format.rs && insn.i_format.rt) ||
+			    (insn.i_format.rs == insn.i_format.rt)))
+				ts->r[31] = epc + 4;
+			ts->epc += 8;
+			break;
+		}
+
 		/* rt field assumed to be zero */
-		if ((long)ts->r[insn.i_format.rs] > 0)
+		if ((long)ts->r[insn.i_format.rs] > 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
-		else
+			if (insn.i_format.opcode == bgtzl_op)
+				ret = BRANCH_LIKELY_TAKEN;
+		} else
 			epc += 8;
-		nextpc = epc;
+		ts->epc = epc;
 		break;
 
 	/*
@@ -605,78 +753,201 @@ compute_return_epc(Trap_state *ts, unsigned long instpc)
 	 */
 	case cop1_op:
 #ifndef CONFIG_FPU
-                (void)fcr31; (void)bit;
-                printf("%s: unsupported cop1_op\n", __func__);
+		(void)fcr31; (void)bit; (void)reg;
+		// don't support FPU branch emulation for now
+		goto sigill_cop1_op;
+#endif /* CONFIG_FPU */
+
+#if 1 // CONFIG_FPU KYMAXXX TODO implement FPU branch emulation
+		(void)fcr31; (void)bit; (void)reg;
+		// don't support FPU branch emulation for now
+		goto sigill_cop1_op;
 #else
-		preempt_disable();
-		Thread *t = current_thread();
-		assert(Fpu::fpu.current().is_owner(current()) == (t->state() & Thread_fpu_owner));
-		if (Fpu::fpu.current().is_owner(current()) && (t->state() & Thread_fpu_owner))
-			fcr31 = Fpu::fcr_read();
-		else
-			fcr31 = Fpu::fcr(t->fpu_state());
-		preempt_enable();
-
-		bit = (insn.i_format.rt >> 2);
-		bit += (bit != 0);
-		bit += 23;
-		switch (insn.i_format.rt & 3) {
-		case 0: /* bc1f */
-		case 2: /* bc1fl */
-			if (~fcr31 & (1 << bit))
-				epc = epc + 4 + (insn.i_format.simmediate << 2);
+		if (cpu_has_mips_r6 &&
+		    ((insn.i_format.rs == bc1eqz_op) ||
+		     (insn.i_format.rs == bc1nez_op))) {
+			if (!used_math()) { /* First time FPU user */
+				ret = init_fpu();
+				if (ret && NO_R6EMU) {
+					ret = -ret;
+					break;
+				}
+				ret = 0;
+				set_used_math();
+			}
+			lose_fpu(1);    /* Save FPU state for the emulator. */
+			reg = insn.i_format.rt;
+			bit = 0;
+			switch (insn.i_format.rs) {
+			case bc1eqz_op:
+				/* Test bit 0 */
+				if (get_fpr32(&current->thread.fpu.fpr[reg], 0)
+				    & 0x1)
+					bit = 1;
+				break;
+			case bc1nez_op:
+				/* Test bit 0 */
+				if (!(get_fpr32(&current->thread.fpu.fpr[reg], 0)
+				      & 0x1))
+					bit = 1;
+				break;
+			}
+			own_fpu(1);
+			if (bit)
+				epc = epc + 4 +
+					(insn.i_format.simmediate << 2);
 			else
 				epc += 8;
-			nextpc = epc;
+			ts->epc = epc;
+
 			break;
+		} else {
 
-		case 1: /* bc1t */
-		case 3: /* bc1tl */
-			if (fcr31 & (1 << bit))
-				epc = epc + 4 + (insn.i_format.simmediate << 2);
+			preempt_disable();
+			if (is_fpu_owner())
+				fcr31 = Fpu::fcr_read(); //read_32bit_cp1_register(CP1_STATUS);
 			else
-				epc += 8;
-			nextpc = epc;
+				fcr31 = Fpu::fcr(current_thread()->fpu_state()); //current->thread.fpu.fcr31;
+			preempt_enable();
+
+			bit = (insn.i_format.rt >> 2);
+			bit += (bit != 0);
+			bit += 23;
+			switch (insn.i_format.rt & 3) {
+			case 0: /* bc1f */
+			case 2: /* bc1fl */
+				if (~fcr31 & (1 << bit)) {
+					epc = epc + 4 +
+						(insn.i_format.simmediate << 2);
+					if (insn.i_format.rt == 2)
+						ret = BRANCH_LIKELY_TAKEN;
+				} else
+					epc += 8;
+				ts->epc = epc;
+				break;
+
+			case 1: /* bc1t */
+			case 3: /* bc1tl */
+				if (fcr31 & (1 << bit)) {
+					epc = epc + 4 +
+						(insn.i_format.simmediate << 2);
+					if (insn.i_format.rt == 3)
+						ret = BRANCH_LIKELY_TAKEN;
+				} else
+					epc += 8;
+				ts->epc = epc;
+				break;
+			}
 			break;
 		}
-#endif
+#endif /* CONFIG_FPU */
+        break;
+	case bc6_op:
+		/* Only valid for MIPS R6 */
+		if (!cpu_has_mips_r6) {
+			ret = -SIGILL;
+			break;
+		}
+		ts->epc += 8;
+		break;
+	case balc6_op:
+		if (!cpu_has_mips_r6) {
+			ret = -SIGILL;
+			break;
+		}
+		/* Compact branch: BALC */
+		ts->r[31] = epc + 4;
+		epc += 4 + (insn.i_format.simmediate << 2);
+		ts->epc = epc;
+		break;
+	case beqzcjic_op:
+		if (!cpu_has_mips_r6) {
+			ret = -SIGILL;
+			break;
+		}
+		/* Compact branch: BEQZC || JIC */
+		ts->epc += 8;
+		break;
+	case bnezcjialc_op:
+		if (!cpu_has_mips_r6) {
+			ret = -SIGILL;
+			break;
+		}
+		/* Compact branch: BNEZC || JIALC */
+		if (insn.i_format.rs)
+			ts->r[31] = epc + 4;
+		ts->epc += 8;
+		break;
+	case cbcond0_op:
+	case cbcond1_op:
+		/* Only valid for MIPS R6 */
+		if (!cpu_has_mips_r6) {
+			ret = -SIGILL;
+			break;
+		}
+		/*
+		 * Compact branches:
+		 * bovc, beqc, beqzalc, bnvc, bnec, bnezlac
+		 */
+		if (insn.i_format.rt && !insn.i_format.rs)
+			ts->r[31] = epc + 4;
+		ts->epc += 8;
 		break;
 	}
 
-	return nextpc;
+	return ret;
+
+sigill_dsp:
+    printf("%s(%lx): DSP branch but not DSP ASE\n", __func__,
+            current_thread()->dbg_id());
+	return -EFAULT;
+sigill_r6:
+	printf("%s(%lx): R2 branch but r2-to-r6 emulator is not present\n", __func__,
+            current_thread()->dbg_id());
+	return -EFAULT;
+sigill_cop1_op:
+	printf("%s(%lx): unsupported cop1_op FPU branch emulation\n", __func__,
+			current_thread()->dbg_id());
+	return -EFAULT;
+}
+
+PRIVATE static inline
+int
+Thread::delay_slot(Mword cause)
+{
+	return cause & CAUSEF_BD;
+}
+
+PRIVATE static
+int
+Thread::compute_return_epc(Trap_state *ts, Mword cause)
+{
+	long epc;
+	union mips_instruction insn;
+
+	if (!delay_slot(cause)) {
+		ts->epc += 4;
+		return 0;
+	}
+
+	epc = ts->epc;
+	if (epc & 3)
+		goto unaligned;
+
+	/*
+	 * Read the instruction
+	 */
+	insn.word = *(Unsigned32 *)epc; // TODO implement as userspace peek
+
+	return compute_return_epc_for_insn(ts, insn);
 
 unaligned:
-	printf("%s: unaligned epc\n", __func__);
-	return nextpc;
-
-sigill:
-	printf("%s: DSP branch but not DSP ASE\n", __func__);
-	return nextpc;
+	printf("%s(%lx): unaligned epc\n", __func__,
+            current_thread()->dbg_id());
+	return -EFAULT;
 }
 
-static int
-update_pc(Trap_state *ts, Mword cause)
-{
-  unsigned long branch_pc;
-
-  if (cause & CAUSEF_BD) {
-    branch_pc = compute_return_epc(ts, ts->epc);
-    if (branch_pc == INVALID_INST) {
-      panic("Failed to emulate branch");
-    } else {
-      ts->epc = branch_pc;
-    }
-  } else
-    ts->epc += 4;
-
-  if (cause & CAUSEF_BD)
-    printf("[%d] update_pc(): New PC: %#lx\n", cause & CAUSEF_BD ? 1 : 0, ts->epc);
-
-  return 0;
-}
-
-
-PUBLIC static
+PRIVATE static
 bool
 Thread::handle_cop0_unusable_exc(Trap_state *ts)
 {
@@ -686,7 +957,7 @@ Thread::handle_cop0_unusable_exc(Trap_state *ts)
   Mword inst, rt, rd, copz, sel, co_bit;
   bool handled = false;
 
-  if (cause & CAUSEF_BD)
+  if (delay_slot(cause))
     {
       epc += 4;
       panic("EXC in BD slot not supported @ %08lx\n", epc);
@@ -705,16 +976,16 @@ Thread::handle_cop0_unusable_exc(Trap_state *ts)
     {
       ts->r[rt] = read_c0_ddatalo();
       //printf(">>>>>>>>>>>>>> Reading UTCB H/W Register @ %08lx: %08lx <<<<<<<<<<<<<<<<\n", epc, ts->r[rt]);
-      update_pc(ts, cause);
-      handled = true;
+      if (compute_return_epc(ts, cause) >= 0)
+          handled = true;
     }
   /* Setting the TLS by writing to UserLocal */
   else if (copz == mtc_op && rd == 4 && sel == 2)
     {
       //printf("************Writing TLS H/W Register @ %08lx: %08lx *******************\n", epc, ts->r[rt]);
       write_c0_userlocal(ts->r[rt]);
-      update_pc(ts, cause);
-      handled = true;
+      if (compute_return_epc(ts, cause) >= 0)
+          handled = true;
     }
   else
     printf("Unsupported COP0 operation @ %08lx\n", epc);
@@ -1163,7 +1434,7 @@ Thread::handle_fpe(Trap_state *ts)
 {
   Mword epc = ts->epc;
 
-  if (ts->cause & CAUSEF_BD)
+  if (delay_slot(ts->cause))
     epc += 4;
 
   panic("FPU emulation not supported @ %08lx", epc);
@@ -1172,13 +1443,13 @@ Thread::handle_fpe(Trap_state *ts)
 //-----------------------------------------------------------------------------
 IMPLEMENTATION [mips32 && !fpu]:
 
-PUBLIC static
+PRIVATE static
 bool
 Thread::handle_fpu_trap(Trap_state *ts)
 {
   Mword epc = ts->epc;
 
-  if (ts->cause & CAUSEF_BD)
+  if (delay_slot(ts->cause))
     epc += 4;
 
   panic("FPU processor not supported @ %08lx", epc);
@@ -1190,7 +1461,7 @@ IMPLEMENTATION [mips32 && fpu]:
 #include "fpu.h"
 #include "cpu.h"
 
-PUBLIC static
+PRIVATE static
 bool
 Thread::handle_fpu_trap(Trap_state *)
 {
@@ -1202,7 +1473,7 @@ Thread::handle_fpu_trap(Trap_state *)
       printf("###FPU own %p => cur %p %s\n", Fpu::fpu.current().owner(), t, Cpu::vz_str());
     }
 
-  // don't update_pc, retry the faulting instruction
+  // don't compute_return_epc, retry the faulting instruction
   if (current_thread()->switchin_fpu())
     return true;
 

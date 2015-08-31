@@ -1,10 +1,17 @@
 # -*- makefile -*-
 # vi:se ft=make:
 
-SYSTEM_TARGET             ?= mips-mti-linux-gnu-
+SYSTEM_TARGET_mips32r6     = mips-img-linux-gnu-
+SYSTEM_TARGET_mips32r2     = mips-mti-linux-gnu-
+
+SYSTEM_TARGET             ?= $(if $(CONFIG_CPU_MIPS32_R6),$(SYSTEM_TARGET_mips32r6),$(SYSTEM_TARGET_mips32r2))
+
 LD_EMULATION_CHOICE       := elf32ltsmip
-SHARED_FLAGS              += -mips32r2 -EL -msoft-float
-LDFLAGS                   += -mips32r2 -EL 
+LDFLAGS                   += -EL
+SHARED_FLAGS              += -EL
+SHARED_FLAGS              += -msoft-float
+SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R2) += -march=mips32r2
+SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R6) += -march=mips32r6
 #OPT_CFLAGS                := -g
 #OPT_CXXFLAGS              := -g
 #OPT_CXXFLAGS-gcc          := -g

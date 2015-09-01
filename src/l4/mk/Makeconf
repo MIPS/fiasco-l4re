@@ -34,7 +34,9 @@ all::
 $(if $(ROLE),$(OBJ_DIR)/.general.d: $(L4DIR)/mk/$(ROLE))
 
 SYSTEM_TARGET_arm     = arm-none-linux-gnueabi-
-SYSTEM_TARGET_mips    = mips-mti-linux-gnu-
+SYSTEM_TARGET_mips32r6 = mips-img-linux-gnu-
+SYSTEM_TARGET_mips32r2 = mips-mti-linux-gnu-
+SYSTEM_TARGET_mips    = $(if $(CONFIG_CPU_MIPS32_R6),$(SYSTEM_TARGET_mips32r6),$(SYSTEM_TARGET_mips32r2))
 SYSTEM_TARGET_ppc32   = powerpc-linux-
 SYSTEM_TARGET_sparc   = $(if $(GCCIS_sparc_leon),sparc-elf-,sparc-linux-)
 SYSTEM_TARGET         = $(SYSTEM_TARGET_$(ARCH))
@@ -137,6 +139,10 @@ CARCHFLAGS_arm_armv6zk    = -march=armv6zk
 CARCHFLAGS_arm_armv7a     = -march=armv7-a
 CARCHFLAGS_arm_armv7r     = -march=armv7-r
 
+CARCHFLAGS_mips       	  = -EL
+CARCHFLAGS_mips_mips32r2  = -march=mips32r2
+CARCHFLAGS_mips_mips32r6  = -march=mips32r6
+
 CARCHFLAGS_sparc_v7          = -mcpu=v7
 # the -Wa.. is probably a gcc buglet fix only, check again later
 CARCHFLAGS_sparc_leon        = -mcpu=leon -Wa,-Av8
@@ -157,8 +163,7 @@ CCXX_FLAGS_amd64 += -m64
 CCXX_FLAGS_ppc32 += -m32
 CCXX_FLAGS_sparc += -m32
 CCXX_FLAGS_x86   += -m32
-CARCHFLAGS_mips	 += -mips32r2 -EL
-CCXX_FLAGS_mips	 += -mips32r2 -EL
+CCXX_FLAGS_mips	 += -EL
 CCXX_FLAGS        = $(CCXX_FLAGS_$(BUILD_ARCH))
 
 CC_x86          = $(SYSTEM_TARGET)gcc

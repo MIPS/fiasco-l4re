@@ -19,13 +19,12 @@
  */
 
 #define HW_SYNCI_Step       $1
-  .text
-  .globl syncICache;
-  .ent  syncICache, 0;
+    .text
+    .globl syncICache;
+    .ent  syncICache, 0;
 syncICache: ;
-  .set push
-  .set noreorder
-  .set mips32r2
+    .set push
+    .set noreorder
 
     beq     $a1, $0, 20f
     nop
@@ -53,7 +52,6 @@ syncICache: ;
 _start:
   .set push
   .set noreorder
-  .set mips32r2
 
   /* for bootstrap, map the first 0x20000000 of memory 1:1 in USEG address space */
   li    $8, 0x00000000

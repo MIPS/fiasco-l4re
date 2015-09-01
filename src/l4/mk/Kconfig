@@ -239,6 +239,24 @@ endif
 
 if BUILD_ARCH_mips
 
+choice
+	prompt "CPU variant"
+
+config CPU_MIPS32_R2
+	bool "MIPS32 Release 2"
+	depends on BUILD_ARCH_mips
+
+config CPU_MIPS32_R6
+	bool "MIPS32 Release 6"
+	depends on BUILD_ARCH_mips
+
+endchoice
+
+config CPU
+	string
+	default "mips32r2"  if CPU_MIPS32_R2
+	default "mips32r6"  if CPU_MIPS32_R6
+
 config PAGE_SIZE_16KB
 	bool
 	default n

@@ -165,10 +165,29 @@ ENTRY (memcpy)
 	andi	t1, 0x3			# a0/a1 are aligned, but are we
 	beq	t1, zero, L(chk8w)	#  starting in the middle of a word?
 	subu	a2, t1
+#if 1 /* KYMAXXX R6_CHG make compatible for both mips32r2/mips32r6 */
+	addiu	t2, t1, -1		# Yes we are... copy 1, 2 or 3 bytes
+	beq	t2, zero, L(cpb1)
+	addiu	t2, -1
+	beq	t2, zero, L(cpb2)
+	 nop
+L(cpb3):
+	lb	t0, 2(a1)
+	sb	t0, 2(a0)
+L(cpb2):
+	lb	t0, 1(a1)
+	sb	t0, 1(a0)
+L(cpb1):
+	lb	t0, 0(a1)
+	addu	a1, t1
+	sb	t0, 0(a0)
+	addu	a0, t1
+#else
 	LWHI	t0, 0(a1)		# Yes we are... take care of that
 	addu	a1, t1
 	SWHI	t0, 0(a0)
 	addu	a0, t1
+#endif /* R6_CHG */
 
 L(chk8w):	
 	andi	t0, a2, 0x1f		# 32 or more bytes left?
@@ -228,18 +247,52 @@ L(shift):
 	andi	a3, 0x3			#  (unoptimized case...)
 	beq	a3, zero, L(shft1)
 	subu	a2, a3			# a2 = bytes left
-	LWHI	t0, 0(a1)		# Take care of first odd part
+#if 1 /* KYMAXXX R6_CHG make compatible for both mips32r2/mips32r6 */
+	addiu	t2, a3, -1		# load 4 bytes from Src and copy up to
+	beq	t2, zero, L(shb1)	#  4 bytes to bring Dest to alignment
+	addiu	t2, -1
+	beq	t2, zero, L(shb2)
+	addiu	t2, -1
+	beq	t2, zero, L(shb3)
+	 nop
+L(shb4):
+	lb	t0, 3(a1)
+	sb	t0, 3(a0)
+L(shb3):
+	lb	t0, 2(a1)
+	sb	t0, 2(a0)
+L(shb2):
+	lb	t0, 1(a1)
+	sb	t0, 1(a0)
+L(shb1):
+	lb	t0, 0(a1)
+	addu	a1, a3
+	sb	t0, 0(a0)
+	addu	a0, a3
+#else
+	LWHI	t0, 0(a1)		# take care of first odd part
 	LWLO	t0, 3(a1)
 	addu	a1, a3
 	SWHI	t0, 0(a0)
 	addu	a0, a3
+#endif /* R6_CHG */
 L(shft1):	
 	andi	t0, a2, 0x3
 	subu	a3, a2, t0
 	addu	a3, a1
 L(shfth):	
-	LWHI	t1, 0(a1)		# Limp through, word by word
+#if 1 /* KYMAXXX R6_CHG make compatible for both mips32r2/mips32r6 */
+	lb	t1, 0(a1)		# load byte by byte, store as word
+	lb	t2, 1(a1)
+	ins	t1, t2, 8, 8
+	lb	t2, 2(a1)
+	ins	t1, t2, 16, 8
+	lb	t2, 3(a1)
+	ins	t1, t2, 24, 8
+#else
+	LWHI	t1, 0(a1)		# limp through, word by word
 	LWLO	t1, 3(a1)
+#endif /* R6_CHG */
 	addiu	a0, 4
 	addiu	a1, 4
 	bne	a1, a3, L(shfth)

@@ -1,6 +1,6 @@
 HOWTO for building and running the MIPS port of Fiasco/L4Re.
 
-Updated: Sep 4, 2015
+Updated: Aug 31, 2015
 
 
 Overview
@@ -25,8 +25,14 @@ Setup toolchain
 ===============
 
  Building Fiasco/L4Re for MIPS arch has been tested to work with the following
- freely available toolchain:
+ freely available toolchains:
 
+ MIPS ISA Release 6
+ - Codescape GNU Tools 2015.01-7, IMG GNU Linux Toolchain
+   mips-img-linux-gnu-gcc (Codescape GNU Tools 2015.01-7 for MIPS IMG Linux) 4.9.2
+   GNU ld (Codescape GNU Tools 2015.01-7 for MIPS IMG Linux) 2.24.90
+
+ MIPS ISA Release 1 to Release 5:
  - Codescape GNU Tools 2015.01-5, MTI GNU Linux Toolchain
    mips-mti-linux-gnu-gcc (Codescape GNU Tools 2015.01-5 for MIPS MTI Linux) 4.9.2
    GNU ld (Codescape GNU Tools 2015.01-5 for MIPS MTI Linux) 2.24.90
@@ -37,6 +43,8 @@ Setup toolchain
 
    export ARCH=mips
    export PATH=/<path_to_toolchain>/bin:$PATH
+   export CROSS_COMPILE=mips-img-linux-gnu-
+  OR
    export CROSS_COMPILE=mips-mti-linux-gnu-
 
  If necessary, set SYSTEM_TARGET appropriately for the toolchain (see below for

@@ -45,6 +45,7 @@ l4_atomic_add(volatile long int* mem, long int offset)
 }
 
 
+// borrowed from linux; removed .set mips3, .set mips0 directives
 #define __cmpxchg_asm(ld, st, m, old, new)				\
 ({									\
 	__typeof(*(m)) __ret;						\
@@ -52,12 +53,9 @@ l4_atomic_add(volatile long int* mem, long int offset)
 		__asm__ __volatile__(					\
 		"	.set	push				\n"	\
 		"	.set	noat				\n"	\
-		"	.set	mips3				\n"	\
 		"1:	" ld "	%0, %2		# __cmpxchg_asm \n"	\
 		"	bne	%0, %z3, 2f			\n"	\
-		"	.set	mips0				\n"	\
 		"	move	$1, %z4				\n"	\
-		"	.set	mips3				\n"	\
 		"	" st "	$1, %1				\n"	\
 		"	beqz	$1, 1b				\n"	\
 		"	.set	pop				\n"	\

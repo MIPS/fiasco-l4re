@@ -4,7 +4,7 @@ L4DIR    ?= $(PKGDIR)/../..
 
 include $(L4DIR)/mk/Makeconf
 
-CC        = $(SYSTEM_TARGET)gcc -mips32r2 -EL
+CC        = $(SYSTEM_TARGET)gcc $(CARCHFLAGS)
 
 CPPFLAGS  = -I./asm -I./ -I$(PKGDIR)/mips/include -I$(KARMADIR)/include -g -O2
 ASFLAGS   = -xassembler-with-cpp

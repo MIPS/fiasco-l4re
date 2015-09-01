@@ -116,7 +116,21 @@ L(ueven):
 	andi	t0, 0x3
 	beq	t0, zero, L(chkw)
 	subu	a2, t0
+#if 1 /* KYMAXXX R6_CHG make compatible for both mips32r2/mips32r6 */
+	addiu	t2, t0, -1		# prepare to set 1, 2, or 3 bytes
+	beq	t2, zero, L(sb1)
+	addiu	t2, -1
+	beq	t2, zero, L(sb2)
+	 nop
+L(sb3):
+	sb	a1, 2(a0)
+L(sb2):
+	sb	a1, 1(a0)
+L(sb1):
+	sb	a1, 0(a0)
+#else
 	SWHI	a1, 0(a0)		# Yes, handle first unaligned part
+#endif
 	addu	a0, t0			# Now both a0 and a2 are updated
 
 L(chkw):	

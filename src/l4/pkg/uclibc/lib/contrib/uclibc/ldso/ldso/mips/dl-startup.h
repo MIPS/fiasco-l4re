@@ -42,7 +42,11 @@ __asm__(""
 #else	/* O32 || N32 */
     "	la	$8, .coff\n"
 #endif	/* O32 || N32 */
+#if 1 /* KYMAXXX R6_CHG make compatible for both mips32r2/mips32r6 */
+    "	bal	.coff\n"
+#else
     "	bltzal	$8, .coff\n"
+#endif
     ".coff:\n"
 #if _MIPS_SIM == _MIPS_SIM_ABI64
     "	dsubu	$8, $31, $8\n"

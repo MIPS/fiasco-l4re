@@ -241,6 +241,7 @@ SHELL		= bash
 SIZE		?= $(SYSTEM_TARGET)size
 STRIP		?= $(SYSTEM_TARGET)strip
 SVN		= svn
+TOUCH	= touch
 TR		= tr
 GEN_DOPECODE	= $(L4DIR)/tool/gen_dopecode/gen_dopecode
 ABS2REL		= $(L4DIR)/tool/bin/abs2rel.sh

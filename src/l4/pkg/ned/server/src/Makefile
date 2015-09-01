@@ -19,5 +19,13 @@ include $(L4DIR)/mk/prog.mk
 
 %.bin.o: $(SRC_DIR)/% $(SRC_DIR)/Makefile $(ELF_PATCHER)
 	@$(GEN_MESSAGE)
+ifneq ($(ARCH),mips)
 	$(VERBOSE)(TARGETDIR=$$PWD && cd $(SRC_DIR) && $(OBJCOPY) -I binary -B $(BFD_ARCH) -O $(OFORMAT) $(notdir $<) $$TARGETDIR/$@ )
+else
+#	Work around issue with ld and objcopy setting default arch to mips:3000
+	$(VERBOSE)$(TOUCH) fake.c
+	$(VERBOSE)(TARGETDIR=$$PWD && cd $(SRC_DIR) && \
+		$(CC) $(CARCHFLAGS) -nostdlib -r $$TARGETDIR/fake.c -Wl,--format=binary $(notdir $<) -o $$TARGETDIR/$@ )
+	$(VERBOSE)$(RM) fake.c
+endif
 	$(VERBOSE)$(ELF_PATCHER) $@ --min-section-align=4

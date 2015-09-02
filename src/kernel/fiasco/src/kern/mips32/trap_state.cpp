@@ -104,6 +104,9 @@ public:
   typedef FIASCO_FASTCALL int (*Handler)(Trap_state*, Cpu_number::Value cpu, bool is_guestcontext);
   static Handler base_trap_handler asm ("BASE_TRAP_HANDLER");
   bool exclude_logging() { return false; }
+
+private:
+  const static Unsigned8 badinstr_valid[Exc_code_LAST];
 };
 
 
@@ -116,6 +119,42 @@ IMPLEMENTATION:
 static_assert(sizeof(Trap_state) == FRAME_SIZ, "Trap_state and asm FRAME_SIZ overlay mismatch");
 
 Trap_state::Handler Trap_state::base_trap_handler FIASCO_FASTCALL;
+
+// NOTE: On TLB Refill - Instruction Fetch, badinstr is actually UNPREDICTABLE
+const Unsigned8 Trap_state::badinstr_valid[Exc_code_LAST] = {
+  [Exc_code_Int]       = 0,      // Interrupt
+  [Exc_code_Mod]       = 1,      // TLB modification exception
+  [Exc_code_TLBL]      = 1,      // TLB exception (load or fetch)
+  [Exc_code_TLBS]      = 1,      // TLB exception (store)
+  [Exc_code_AdEL]      = 1,      // Address error exception (load or fetch)
+  [Exc_code_AdES]      = 1,      // Address error exception (store)
+  [Exc_code_IBE]       = 0,      // Bus error exception (load or fetch)
+  [Exc_code_DBE]       = 0,      // Bus error exception (store)
+  [Exc_code_Sys]       = 1,      // Syscall exception
+  [Exc_code_Bp]        = 1,      // Breakpoint exception
+  [Exc_code_RI]        = 1,      // Reserved instruction exception
+  [Exc_code_CpU]       = 1,      // Coprocessor unusable exception
+  [Exc_code_Ov]        = 1,      // Arithmetic overflow exception
+  [Exc_code_Tr]        = 1,      // Trap
+  [Exc_code_Res1]      = 0,      // (reserved)
+  [Exc_code_FPE]       = 1,      // Floating point exception
+  [Exc_code_Impl1]     = 0,      // (implementation-dependent 1)
+  [Exc_code_Impl2]     = 0,      // (implementation-dependent 2)
+  [Exc_code_C2E]       = 1,      // (reserved for precise coprocessor 2)
+  [Exc_code_TLBRI]     = 1,      // TLB exception (read)
+  [Exc_code_TLBXI]     = 1,      // TLB exception (execute)
+  [Exc_code_Res2]      = 0,      // (reserved)
+  [Exc_code_MDMX]      = 0,      // (MIPS64 MDMX unusable)
+  [Exc_code_WATCH]     = 0,      // Reference to watchHi/watchLo address
+  [Exc_code_MCheck]    = 0,      // Machine check exception
+  [Exc_code_Thread]    = 0,      // Thread exception
+  [Exc_code_DSPDis]    = 0,      // DSP disabled exception
+  [Exc_code_GE]        = 1,      // Guest Exit exception
+  [Exc_code_Res4]      = 0,      // (reserved)
+  [Exc_code_Prot]      = 0,      // Protection exception
+  [Exc_code_CacheErr]  = 0,      // Cache error exception
+  [Exc_code_Res6]      = 0,      // (reserved)
+};
 
 PUBLIC inline
 void
@@ -229,4 +268,11 @@ Trap_state::exc_code_str(Mword exc_code)
     case Exc_code_Res6:     return __stringify(Exc_code_Res6);
     default:                return __stringify(Exc_code_Invalid);
   }
+}
+
+PUBLIC static inline
+bool
+Trap_state::is_badinstr_valid(Mword exc_code)
+{
+  return (bool)badinstr_valid[exc_code];
 }

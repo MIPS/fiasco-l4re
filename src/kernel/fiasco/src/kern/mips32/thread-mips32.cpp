@@ -43,7 +43,6 @@ IMPLEMENTATION [mips32]:
 
 DEFINE_PER_CPU Per_cpu<Thread::Dbg_stack> Thread::dbg_stack;
 
-
 /* 
  * The catch-all trap entry point.  Called by assembly code when a 
  * CPU trap (that's not specially handled, such as system calls) occurs.
@@ -53,8 +52,7 @@ int
 thread_handle_trap(Trap_state *ts, unsigned cpu, bool is_guestcontext)
 {
   Mword exc_code = MIPS_TRAPTYPE(ts->cause);
-  Mword epc = ts->epc;
-  Mword badvaddr = ts->badvaddr;
+  Mword badinstr = Thread::get_badinstr(ts);
   int handled = 0;
 
   assert(!is_guestcontext); // is_guestcontext not used in thread_handle_trap
@@ -81,9 +79,7 @@ thread_handle_trap(Trap_state *ts, unsigned cpu, bool is_guestcontext)
         break;
 
       default:
-        printf("%d: (%s Mode) :: Trap type %s %ld, epc 0x%08lx, badvaddr 0x%08lx\n",
-          cpu, (MIPS_USERMODE(ts->status) ? "User" : "Kernel"), 
-          Trap_state::exc_code_str(exc_code), exc_code, epc, badvaddr);
+        Thread::print_trap_info("Trap handler", ts, cpu, is_guestcontext, badinstr);
         ts->Return_frame::dump();
         ts->Syscall_frame::dump();
 
@@ -102,9 +98,22 @@ thread_handle_trap(Trap_state *ts, unsigned cpu, bool is_guestcontext)
   }
 
   if (!handled)
-    handled =  current_thread()->handle_slow_trap(ts);
+    handled =  current_thread()->handle_slow_trap(ts, cpu, is_guestcontext, badinstr);
 
   return handled;
+}
+
+PUBLIC static
+void
+Thread::print_trap_info(const char *msg, Trap_state *ts,
+        unsigned cpu, bool guest, Mword badinstr)
+{
+  printf("%d:(%s%s) %s :: Trap type %s %ld\n"
+          "Status %08lx EPC %08lx BadVaddr %08lx BadInstr %08lx\n",
+          cpu, (guest ? "Guest ":""),
+          (MIPS_USERMODE(ts->status) ? "User Mode" : "Kernel Mode"), msg,
+          ts->exc_code_str(ts->trapno()), ts->trapno(),
+          ts->status, ts->epc, ts->badvaddr, badinstr);
 }
 
 PRIVATE static
@@ -161,28 +170,13 @@ Thread::fast_return_to_user(Mword ip, Mword sp, T arg)
  */
 PUBLIC
 int
-Thread::handle_slow_trap(Trap_state *ts)
+Thread::handle_slow_trap(Trap_state *ts, unsigned cpu, bool guest, Mword badinstr)
 {
-  Unsigned32 status = ts->status;
-
   // send exception IPC if requested
-  if (send_exception(ts)) {
-    printf("Slow Trap IPC exception (%s Mode) :: Trap Type %s %ld SR: 0x%08lx EPC: 0x%08lx BadVaddr: 0x%08lx \n",
-      (MIPS_USERMODE(status) ? "User" : "Kernel"),
-      ts->exc_code_str(ts->trapno()), ts->trapno(), ts->status, ts->epc, ts->badvaddr);
-    return 0;
-  }
-
-  /*
-   * Figure out whether we came from user or root/kernel
-   * mode
-   */
-  if (MIPS_USERMODE(status)) {
-    printf("Trap (User Mode) :: Trap Type %s %ld SR: 0x%08lx EPC: 0x%08lx BadVaddr: 0x%08lx \n",
-      ts->exc_code_str(ts->trapno()), ts->trapno(), ts->status, ts->epc, ts->badvaddr);
-  } else { 
-    printf("Trap (Kernel Mode) :: Trap Type %s %ld \n", ts->exc_code_str(ts->trapno()), ts->trapno());
-  }
+  if (send_exception(ts))
+    print_trap_info("Slow Trap IPC exception", ts, cpu, guest, badinstr);
+  else
+    print_trap_info("Slow Trap", ts, cpu, guest, badinstr);
 
   return 0;
 }
@@ -445,8 +439,7 @@ handle_tlb_exceptions(Trap_state *ts, unsigned cpu, bool is_guestcontext)
 
 out:
   if (!handled) {
-    printf("%d: TLB Exception not handled :: Trap type %s %ld, epc %08lx, badvaddr %08lx, from guest %d\n",
-      cpu, ts->exc_code_str(exc_code), exc_code, epc, badvaddr, is_guestcontext);
+    Thread::print_trap_info("TLB handler", ts, cpu, is_guestcontext, 0);
     ts->Return_frame::dump();
     ts->Syscall_frame::dump();
     panic("TLB exception not handled");
@@ -749,6 +742,44 @@ Thread::handle_cop_unusable_exc(Trap_state *ts)
       panic("Unsupported COP%d operation @ %08lx", (int)cop, ts->epc);
     }
   return handled;
+}
+
+/*
+ *  Fetch the bad instruction register
+ */
+PUBLIC static
+Mword
+Thread::get_badinstr(Trap_state *ts)
+{
+  Mword exccode = MIPS_TRAPTYPE(ts->cause);
+
+  if (!cpu_has_badinstr)
+      return 0;
+
+  bool bad_instr_valid = Trap_state::is_badinstr_valid(exccode);
+
+  if (exccode == Trap_state::Exc_code_GE) {
+    Mword gexccode = ((read_c0_guestctl0() & GUESTCTL0_GEXC) >> GUESTCTL0_GEXC_SHIFT);
+    switch (gexccode) {
+      case GUESTCTL0_GEXC_GPSI:
+      case GUESTCTL0_GEXC_GSFC:
+      case GUESTCTL0_GEXC_HC:
+      case GUESTCTL0_GEXC_GRR:
+        bad_instr_valid = 1;
+        break;
+      case GUESTCTL0_GEXC_GVA:
+      case GUESTCTL0_GEXC_GHFC:
+      case GUESTCTL0_GEXC_GPA:
+      default:
+        bad_instr_valid = 0;
+        break;
+    }
+  }
+
+  if (bad_instr_valid)
+    return read_c0_badinstr();
+  else
+    return 0;
 }
 
 IMPLEMENT inline

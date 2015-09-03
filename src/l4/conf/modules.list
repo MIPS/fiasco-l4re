@@ -64,7 +64,8 @@ modaddr 0x00800000
 # use -serial_esc when using jdb
 # default-kernel fiasco -serial_esc
 default-kernel fiasco
-default-bootstrap bootstrap -presetmem=0
+#default-bootstrap bootstrap -presetmem=0
+default-bootstrap bootstrap
 
 entry hello
   roottask moe --init=rom/hello

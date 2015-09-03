@@ -198,6 +198,14 @@ void Mem_op::init_cache_ops(void)
       op_icache_sync_range_index =
         &Mem_op::mips_icache_sync_range_index_32;
       break;
+    case 64:
+      op_icache_sync_all =
+        &Mem_op::mips_icache_sync_all_64;
+      op_icache_sync_range =
+        &Mem_op::mips_icache_sync_range_64;
+      op_icache_sync_range_index =
+        &Mem_op::mips_icache_sync_range_index_64;
+      break;
     default:
       printf("Unable to set up I-Cache ops!!\n");
       panic("I-Cache Line Size %d not supported\n",
@@ -233,6 +241,20 @@ void Mem_op::init_cache_ops(void)
           &Mem_op::mips_dcache_inv_range_32;
       op_dcache_wb_range =
           &Mem_op::mips_dcache_wb_range_32;
+      break;
+    case 64:
+      op_dcache_wbinv_all =
+          &Mem_op::mips_dcache_wbinv_all_64;
+      op_dcache_wb_all =
+          &Mem_op::mips_dcache_wb_all_64;
+      op_dcache_wbinv_range =
+          &Mem_op::mips_dcache_wbinv_range_64;
+      op_dcache_wbinv_range_index =
+          &Mem_op::mips_dcache_wbinv_range_index_64;
+      op_dcache_inv_range =
+          &Mem_op::mips_dcache_inv_range_64;
+      op_dcache_wb_range =
+          &Mem_op::mips_dcache_wb_range_64;
       break;
     default:
       printf("Unable to set up D-Cache ops!!\n");
@@ -937,4 +959,311 @@ void Mem_op::mips_dcache_wb_range_32(vaddr_t va, vsize_t size)
   SYNC;
 
   debug_printf("Data Cache (LSize 32) write-back by range complete.\n");
+}
+
+#define round_line_64(x)   (((x) + 63L) & -64L)
+#define trunc_line_64(x)   ((x) & -64L)
+
+PRIVATE
+void Mem_op::mips_icache_sync_all_64()
+{
+  vaddr_t va, eva;
+
+  va = MIPS_PHYS_TO_KSEG0(0);
+  eva = va + cache_cfg.icache_size;
+
+  debug_printf("I-Cache Size %d Va 0x%08X, EVa 0x%08X\n",
+    cache_cfg.icache_size, (Unsigned32) va, (Unsigned32) eva);
+
+  /*
+   * Since we're hitting the whole thing, we don't have to
+   * worry about the N different "ways".
+   */
+  mips_dcache_wbinv_all_64();
+
+  while (va < eva) {
+    cache_r4k_op_32lines_64(va, CACHE_R4K_I|CACHEOP_R4K_INDEX_INV);
+    va += (32 * 64);
+  }
+
+  SYNC;
+  instruction_hazard();
+
+  debug_printf("Instruction Cache (LSize 64) invalidate complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_icache_sync_range_64(vaddr_t va, vsize_t size)
+{
+  vaddr_t eva;
+
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  mips_dcache_wb_range_64(va, (eva - va));
+
+  while ((eva - va) >= (32 * 64)) {
+    cache_r4k_op_32lines_64(va, CACHE_R4K_I|CACHEOP_R4K_HIT_INV);
+    va += (32 * 64);
+  }
+
+  while (va < eva) {
+    cache_op_r4k_line(va, CACHE_R4K_I|CACHEOP_R4K_HIT_INV);
+    va += 64;
+  }
+
+  SYNC;
+  instruction_hazard();
+
+  debug_printf("Instruction Cache (LSize 64) invalidate by range complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_icache_sync_range_index_64(vaddr_t va, vsize_t size)
+{
+  vaddr_t eva, tmpva;
+  Unsigned32 i, stride, loopcount;
+
+  /*
+   * Since we're doing Index ops, we expect to not be able
+   * to access the address we've been given.  So, get the
+   * bits that determine the cache index, and make a KSEG0
+   * address out of them.
+   */
+  va = MIPS_PHYS_TO_KSEG0(va & cache_cfg.icache_way_mask);
+
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  /*
+   * If we are going to flush more than is in a way, we are flushing
+   * everything.
+   */
+  if (eva - va >= cache_cfg.icache_way_size) {
+    mips_icache_sync_all_64();
+    return;
+  }
+
+  /*
+   * GCC generates better code in the loops if we reference local
+   * copies of these global variables.
+   */
+  stride = cache_cfg.icache_stride;
+  loopcount = cache_cfg.icache_loopcount;
+
+  mips_dcache_wbinv_range_index_64(va, (eva - va));
+
+  while ((eva - va) >= (8 * 64)) {
+    tmpva = va;
+    for (i = 0; i < loopcount; i++, tmpva += stride) {
+      cache_r4k_op_8lines_64(tmpva,
+          CACHE_R4K_I|CACHEOP_R4K_INDEX_INV);
+    }
+    va += 8 * 64;
+  }
+
+  while (va < eva) {
+    tmpva = va;
+    for (i = 0; i < loopcount; i++, tmpva += stride) {
+      cache_op_r4k_line(tmpva,
+          CACHE_R4K_I|CACHEOP_R4K_INDEX_INV);
+    }
+    va += 64;
+  }
+
+  SYNC;
+  instruction_hazard();
+
+  debug_printf("Instruction Cache (LSize 64) invalidate by index complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_wbinv_all_64(void)
+{
+  vaddr_t va, eva;
+
+  va = MIPS_PHYS_TO_KSEG0(0);
+  eva = va + cache_cfg.dcache_size;
+  debug_printf("D-Cache Size %d Va 0x%08X, EVa 0x%08X\n",
+    cache_cfg.dcache_size, (Unsigned32) va, (Unsigned32) eva);
+
+  /*
+   * Since we're hitting the whole thing, we don't have to
+   * worry about the N different "ways".
+   */
+  while (va < eva) {
+    cache_r4k_op_32lines_64(va,
+        CACHE_R4K_D|CACHEOP_R4K_INDEX_WB_INV);
+    va += (32 * 64);
+  }
+
+  SYNC;
+
+  debug_printf("Data Cache (LSize 64) write-back and invalidate complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_wb_all_64(void)
+{
+  vaddr_t va, eva;
+
+  va = MIPS_PHYS_TO_KSEG0(0);
+  eva = va + cache_cfg.dcache_size;
+  debug_printf("D-Cache Size %d Va 0x%08X, EVa 0x%08X\n",
+    cache_cfg.dcache_size, (Unsigned32) va, (Unsigned32) eva);
+
+  /*
+   * Since we're hitting the whole thing, we don't have to
+   * worry about the N different "ways".
+   */
+  while (va < eva) {
+    cache_r4k_op_32lines_64(va, CACHE_R4K_D|CACHEOP_R4K_HIT_WB);
+    va += (32 * 64);
+  }
+
+  SYNC;
+
+  debug_printf("Data Cache (LSize 64) write-back complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_wbinv_range_64(vaddr_t va, vsize_t size)
+{
+  vaddr_t eva;
+
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  while ((eva - va) >= (32 * 64)) {
+    cache_r4k_op_32lines_64(va,
+        CACHE_R4K_D|CACHEOP_R4K_HIT_WB_INV);
+    va += (32 * 64);
+  }
+
+  while (va < eva) {
+    cache_op_r4k_line(va, CACHE_R4K_D|CACHEOP_R4K_HIT_WB_INV);
+    va += 64;
+  }
+
+  SYNC;
+
+  debug_printf("Data Cache (LSize 64) write-back and invalidate by range complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_internal_wbinv_range_index_64(vaddr_t va, vaddr_t eva)
+{
+  /*
+   * Since we're doing Index ops, we expect to not be able
+   * to access the address we've been given.  So, get the
+   * bits that determine the cache index, and make a KSEG0
+   * address out of them.
+   */
+  va = MIPS_PHYS_TO_KSEG0(va);
+  eva = MIPS_PHYS_TO_KSEG0(eva);
+  debug_printf("Va 0x%08X, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) eva);
+
+  for (; (eva - va) >= (8 * 64); va += 8 * 64) {
+    cache_r4k_op_8lines_64(va,
+        CACHE_R4K_D|CACHEOP_R4K_INDEX_WB_INV);
+  }
+
+  for (; va < eva; va += 64) {
+    cache_op_r4k_line(va, CACHE_R4K_D|CACHEOP_R4K_INDEX_WB_INV);
+  }
+}
+
+PRIVATE
+void Mem_op::mips_dcache_wbinv_range_index_64(vaddr_t va, vsize_t size)
+{
+  const vaddr_t way_size = cache_cfg.dcache_way_size;
+  const vaddr_t way_mask = way_size - 1;
+  const Unsigned32 ways = cache_cfg.dcache_ways;
+  vaddr_t eva;
+
+  va &= way_mask;
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  /*
+   * If we are going to flush more than is in a way, we are flushing
+   * everything.
+   */
+  if (eva - va >= way_size) {
+    mips_dcache_wbinv_all_64();
+    return;
+  }
+
+  /*
+   * Invalidate each way.  If the address range wraps past the end of
+   * the way, we will be invalidating in two ways but eventually things
+   * work out since the last way will wrap into the first way.
+   */
+  for (Unsigned32 way = 0; way < ways; way++) {
+    mips_dcache_internal_wbinv_range_index_64(va, eva);
+    va += way_size;
+    eva += way_size;
+  }
+
+  debug_printf("Data Cache (LSize 64) write-back and invalidate by index complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_inv_range_64(vaddr_t va, vsize_t size)
+{
+  vaddr_t eva;
+
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  while ((eva - va) >= (32 * 64)) {
+    cache_r4k_op_32lines_64(va, CACHE_R4K_D|CACHEOP_R4K_HIT_INV);
+    va += (32 * 64);
+  }
+
+  while (va < eva) {
+    cache_op_r4k_line(va, CACHE_R4K_D|CACHEOP_R4K_HIT_INV);
+    va += 64;
+  }
+
+  SYNC;
+
+  debug_printf("Data Cache (LSize 64) invalidate by range complete.\n");
+}
+
+PRIVATE
+void Mem_op::mips_dcache_wb_range_64(vaddr_t va, vsize_t size)
+{
+  vaddr_t eva;
+
+  eva = round_line_64(va + size);
+  va = trunc_line_64(va);
+  debug_printf("Va 0x%08X, Size %d, EVa 0x%08X\n",
+    (Unsigned32) va, (Unsigned32) size, (Unsigned32) eva);
+
+  while ((eva - va) >= (32 * 64)) {
+    cache_r4k_op_32lines_64(va, CACHE_R4K_D|CACHEOP_R4K_HIT_WB);
+    va += (32 * 64);
+  }
+
+  while (va < eva) {
+    cache_op_r4k_line(va, CACHE_R4K_D|CACHEOP_R4K_HIT_WB);
+    va += 64;
+  }
+
+  SYNC;
+
+  debug_printf("Data Cache (LSize 64) write-back by range complete.\n");
 }

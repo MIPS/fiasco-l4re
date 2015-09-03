@@ -67,6 +67,11 @@ _start:
   ehb
   tlbwi
   ehb
+  mfc0  $8, $12, 0         // mfc0 t0, c0_status
+  li    $9, 0x20000000     // set ST0_CU1 to enable FPU
+  or    $8, $8, $9
+  mtc0  $8, $12, 0         // mtc0 t0, c0_status
+  ehb
   la    $29, crt0_stack_high
   subu  $29, 6 * 4
   la    $25, __main        // jump to USEG address space

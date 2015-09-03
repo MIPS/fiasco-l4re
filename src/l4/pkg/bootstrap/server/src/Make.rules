@@ -249,10 +249,16 @@ endif
 $(od)bootstrap_$(ENTRY_FN): $(od)$(BOOTSTRAP_LINK_SOURCE)
 	$(VERBOSE)$(LN) -f $< $@
 
-ifeq ($(ARCH),$(filter $(ARCH),mips))
+ifeq ($(ARCH),mips)
+  ifeq ($(CONFIG_CPU_MIPS32_R6),y)
+	# move bootloader entry point to XKSEG0 to allow bootstrap code to run
+	@echo -e "  MIPS ==> Post-processing: --adjust-vma 0x8000000000000000, $@"
+	@$(OBJCOPY) --adjust-vma 0x8000000000000000 $@
+  else
 	# move bootloader entry point to KSEG0 to allow bootstrap code to run
 	@echo -e "  MIPS ==> Post-processing: --adjust-vma 0x80000000, $@"
 	@$(OBJCOPY) --adjust-vma 0x80000000 $@
+  endif
 endif
 
 $(od)bootstrap_$(ENTRY_FN).elf: $(od)$(BOOTSTRAP_LINK_SOURCE)

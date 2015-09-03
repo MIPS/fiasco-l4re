@@ -760,6 +760,10 @@ Cpu::cpu_probe_mips(struct cpuinfo_mips *c)
 		c->cputype = CPU_SAMURAI;
 		c->cpu_name = "MIPS Samurai UP";
 		break;
+	case PRID_IMP_I6400:
+		c->cputype = CPU_I6400;
+		c->cpu_name = "MIPS I6400";
+		break;
 	}
 	report_kernel();
 	decode_configs(c);

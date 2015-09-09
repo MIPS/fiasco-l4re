@@ -9,6 +9,7 @@ REQUIRES_LIBS_arm   = libdrivers-lcd libdrivers-generic
 REQUIRES_LIBS_ppc32 = libdrivers-lcd libdrivers-generic
 REQUIRES_LIBS_sparc = libdrivers-lcd libdrivers-generic
 PRIVATE_INCDIR	= $(SRC_DIR)
+LIBS_mips       = -ldrivers_fb.o
 LIBS	       += -L$(OBJ_DIR)/con_yuv2rgb/OBJ-$(ARCH)_$(CPU) \
 		  -L$(OBJ_DIR)/con_hw/OBJ-$(SYSTEM) \
 		  -lcon_yuv2rgb $(LIBS_$(ARCH)) -lcon_hw
@@ -23,6 +24,7 @@ A-amd64 = x86
 A-arm   = arm
 A-ppc32 = arm
 A-sparc = arm
+A-mips  = mips
 A       = $(A-$(ARCH))
 
 vpath %.c $(SRC_DIR)/ARCH-$(A)

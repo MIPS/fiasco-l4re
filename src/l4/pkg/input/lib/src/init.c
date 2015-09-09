@@ -25,6 +25,9 @@
 #if defined(ARCH_x86) || defined(ARCH_amd64)
 #include <l4/util/rdtsc.h>  /* XXX x86 specific */
 #endif
+#if defined(ARCH_mips)
+#include <linux/jiffies.h>
+#endif
 
 /* C */
 #include <stdio.h>
@@ -107,6 +110,12 @@ L4_CV int l4input_init(int prio, L4_CV void (*handler)(struct l4input *))
 #endif
                 CHECK(l4input_internal_input_init());
 #if defined(ARCH_x86) || defined(ARCH_amd64)
+		CHECK(l4input_internal_i8042_init());
+#elif defined(ARCH_mips)
+                if (&jiffies != (void*)(&(l4re_kip()->clock)))
+                  printf("L4INPUT: jiffies @ %p but expected @ %p\n",
+                      &jiffies, (void*)(&(l4re_kip()->clock)));
+
 		CHECK(l4input_internal_i8042_init());
 #endif
 		CHECK(l4input_internal_psmouse_init());

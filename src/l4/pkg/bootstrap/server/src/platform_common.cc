@@ -5,7 +5,7 @@
 #ifdef RAM_SIZE_MB
 
 static unsigned long
-scan_ram_size(unsigned long base_addr, unsigned long max_scan_size_mb)
+scan_ram_size(volatile unsigned long base_addr, unsigned long max_scan_size_mb)
 {
   // scan the RAM to find out the RAM size, note that at this point we have
   // two regions in RAM that we cannot touch, &_start - &_end and the

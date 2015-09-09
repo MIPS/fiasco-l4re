@@ -159,12 +159,20 @@ _bmap24msb(l4_uint8_t *vfb,
 	 k = nobits>>3;
 	 kmod = (nobits)%8;
 	 if ( bmap[k] & (0x80 >> kmod) ) {
+#if defined(ARCH_mips) // NO_UNALIGNED_ACCESS
+            memcpy(&vfb[3*j], &fgc, 3);
+#else
 	    *(l4_uint16_t*) (&vfb[3*j]) = (l4_uint16_t) (fgc & 0xffff);
 	    vfb[3*j+2] = (l4_uint8_t) (fgc >> 16);
+#endif
 	 }
 	 else {
+#if defined(ARCH_mips) // NO_UNALIGNED_ACCESS
+            memcpy(&vfb[3*j], &bgc, 3);
+#else
 	    *(l4_uint16_t*) (&vfb[3*j]) = (l4_uint16_t) (bgc & 0xffff);
 	    vfb[3*j+2] = (l4_uint8_t) (bgc >> 16);
+#endif
 	 }
       }
 #ifdef CLEAN_CACHE
@@ -515,8 +523,12 @@ _fill24(l4_uint8_t *vfb,
 
    for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
+#if defined(ARCH_mips) // NO_UNALIGNED_ACCESS
+         memcpy(&vfb[3*j], &color, 3);
+#else
 	 *(l4_uint16_t*) (&vfb[3*j  ]) = (l4_uint16_t)color;
 	                   vfb[3*j+2]  = (l4_uint8_t) (color >> 16);
+#endif
       }
       vfb += bwidth;
    }

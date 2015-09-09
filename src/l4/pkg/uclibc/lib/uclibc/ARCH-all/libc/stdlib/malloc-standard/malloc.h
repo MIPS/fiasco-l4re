@@ -143,9 +143,9 @@ __UCLIBC_MUTEX_EXTERN(__malloc_lock);
 #  define malloc_getpagesize (4096)
 #else
 #  define malloc_getpagesize (L4_PAGESIZE)
-#if L4_PAGESIZE != 4096
-# error Adapt this code for minimal libc version
-#endif
+//#if L4_PAGESIZE != 4096
+//# error Adapt this code for minimal libc version
+//#endif
 #endif
 #endif
 

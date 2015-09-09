@@ -2,7 +2,7 @@
 # vi:se ft=make:
 
 #OPT_SHARED_FLAGS                  += $(call CHECKCC,-finline-limit=10000,)
-SYSTEM_TARGET			  ?= arm-linux-
+SYSTEM_TARGET			  ?= arm-none-linux-gnueabi-
 SHARED_FLAGS-$(CONFIG_ARM_PXA)    += -mcpu=xscale
 SHARED_FLAGS-$(CONFIG_ARM_SA)     += -mcpu=strongarm1100
 SHARED_FLAGS-$(CONFIG_ARM_920T)   += -mcpu=arm920t
@@ -20,3 +20,11 @@ SHARED_FLAGS                      += $(call CHECKCC,-mno-thumb-interwork)
 SHARED_FLAGS                      += -marm -mabi=aapcs
 LDFLAGS                           += --no-warn-mismatch
 LD_EMULATION_CHOICE               := armelf armelf_linux_eabi armelf_fbsd
+OPT_CFLAGS                := -g
+OPT_CXXFLAGS              := -g
+
+OPT_CXXFLAGS-gcc          := -g
+OPT_CFLAGS-gcc            := -g
+OPT_SHARED_FLAGS-gcc      := -g
+OPT_SHARED_FLAGS-gcc      := -g
+

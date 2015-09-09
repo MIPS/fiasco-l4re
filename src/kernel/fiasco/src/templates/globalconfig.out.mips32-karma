@@ -1,0 +1,3 @@
+CONFIG_MIPS32=y
+CONFIG_PF_KARMA=y
+# CONFIG_JDB is not set

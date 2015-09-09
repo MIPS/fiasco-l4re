@@ -43,6 +43,10 @@
 #include "ARCH-sparc/macros.h"
 #endif
 
+#ifdef ARCH_mips
+#include "ARCH-mips/macros.h"
+#endif
+
 #include "types.h"
 #include "patch.h"
 #include "startup.h"

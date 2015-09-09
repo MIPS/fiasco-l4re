@@ -19,6 +19,10 @@ config BUILD_ARCH_amd64
 config BUILD_ARCH_arm
 	bool "ARM architecture"
 
+config BUILD_ARCH_mips
+	bool "MIPS architecture"
+	select PAGE_SIZE_16KB
+
 config BUILD_ARCH_ppc32
 	bool "PowerPC 32 architecture (EXPERIMENTAL!)"
 
@@ -31,6 +35,7 @@ config BUILD_ARCH
 	string
 	default "x86"   if BUILD_ARCH_x86
 	default "arm"   if BUILD_ARCH_arm
+	default "mips"  if BUILD_ARCH_mips
 	default "amd64" if BUILD_ARCH_amd64
 	default "ppc32" if BUILD_ARCH_ppc32
 	default "sparc" if BUILD_ARCH_sparc
@@ -232,6 +237,15 @@ config CPU_ARMV6PLUS
 
 endif
 
+if BUILD_ARCH_mips
+
+config PAGE_SIZE_16KB
+	bool
+	default n
+	depends on BUILD_ARCH_mips
+
+endif
+
 if BUILD_ARCH_sparc
 
 choice
@@ -340,6 +354,14 @@ endif
 
 INSERT_PLATFORM_TYPES
 
+config PAGE_SIZE_4KB
+	bool
+	default y if !PAGE_SIZE_16KB
+
+config PAGE_SIZE_16KB
+	depends on BUILD_ARCH_mips
+	bool
+
 config USE_DROPS_STDDIR
 	def_bool n
 
@@ -422,7 +444,7 @@ config BID_GCC_OMIT_FP
 
 config BID_GCC_ENABLE_STACK_PROTECTOR
     bool "GCC: enable stack protector"
-    default y if BUILD_ARCH_x86 || BUILD_ARCH_amd64 || BUILD_ARCH_arm
+    default y if BUILD_ARCH_x86 || BUILD_ARCH_amd64 || BUILD_ARCH_arm || BUILD_ARCH_mips
     help
       If enabled, support for the gcc stack protector will be enabled.
       The stack protector uses stack canaries to detect stack smashing

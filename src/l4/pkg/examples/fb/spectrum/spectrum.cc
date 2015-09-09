@@ -61,7 +61,12 @@ static void put_pixel(int x, int y, int fullval)
     {
     case 8: *(unsigned char  *)offset = v; break;
     case 14: case 15: case 16: *(unsigned short *)offset = v; break;
+#if defined(ARCH_mips) // NO_UNALIGNED_ACCESS
+    case 24: memcpy(&offset, &v, 3); break;
+    case 32: *(unsigned int   *)offset = v; break;
+#else
     case 24: case 32: *(unsigned int   *)offset = v; break;
+#endif
     default:
       printf("unhandled bitsperpixel %d\n", bpp);
     };

@@ -127,6 +127,8 @@ public:
     exit(-100);
   }
 
+  virtual const char *get_platform_name(void) { return "unknown"; }
+
   // remember the chosen platform
   static Platform_base *platform;
 

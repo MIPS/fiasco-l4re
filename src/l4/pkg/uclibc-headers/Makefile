@@ -17,6 +17,9 @@ DST_HEADERS-arm     := bits/arm_asm.h
 DST_HEADERS-arm     += bits/arm_bx.h
 DST_HEADERS-sparc   := linux/sockios.h asm/traps.h
 DST_HEADERS-ppc32   := asm/sockios.h asm/ioctl.h
+DST_HEADERS-mips    := asm/sockios.h asm/ioctl.h asm-generic/ioctl.h \
+                       asm/param.h asm/sgidefs.h sgidefs.h \
+                       sys/asm.h sys/regdef.h sys/tas.h
 
 DST_HEADERS += $(DST_HEADERS-$(BUILD_ARCH))
 

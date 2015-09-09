@@ -2,6 +2,8 @@ INTERFACE[i8259]:
 
 #include "initcalls.h"
 
+INTERFACE[i8259-{ia32,amd64}]:
+
 EXTENSION class Pic
 {
 public:
@@ -16,8 +18,16 @@ public:
     MASTER_OCW	    = MASTER_PIC_BASE + OFF_OCW,
     SLAVES_ICW	    = SLAVES_PIC_BASE + OFF_ICW,
     SLAVES_OCW	    = SLAVES_PIC_BASE + OFF_OCW,
+  };
+};
 
+INTERFACE[i8259]:
 
+EXTENSION class Pic
+{
+public:
+  enum
+  {
     /*
     **	ICW1				
     */
@@ -141,6 +151,8 @@ IMPLEMENTATION[i8259]:
 #include "initcalls.h"
 #include "koptions.h"
 #include "mem_layout.h"
+
+IMPLEMENTATION[i8259-{ia32,amd64}]:
 
 int Pic::special_fully_nested_mode = 1; // be compatible with Jochen's L4
 
@@ -278,6 +290,8 @@ Pic::pic_init(unsigned char master_base, unsigned char slave_base)
   Pic::disable_all_save();
 
 }
+
+IMPLEMENTATION[i8259]:
 
 IMPLEMENT inline NEEDS["io.h"]
 void

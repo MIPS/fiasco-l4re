@@ -34,6 +34,10 @@ Jdb_kern_info_data::show_percpu_offsets()
 // ------------------------------------------------------------------------
 IMPLEMENTATION [mp]:
 
+#include <cstdio>
+
+#include "per_cpu_data.h"
+
 PRIVATE
 void
 Jdb_kern_info_data::show_percpu_offsets()

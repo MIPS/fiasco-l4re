@@ -5,7 +5,7 @@ rel2abs	= $(foreach f, $(1),$(shell cd $(f); pwd))
 LIBUART_srcdir    := $(strip $(call rel2abs, $(srcdir)))
 LIBUART_VPATH_abs := $(call rel2abs, $(VPATH_LIBUART))
 
-$(LIBUART): FORCE
+$(LIBUART): FORCE $(LIBKARMA)
 	$(VERBOSE)if [ -e $(dir $@) ]; then true; else mkdir -p $(dir $@); fi
 	$(MAKE_MESSAGE)      
 	$(VERBOSE)$(MAKE) -C uart	 		\

@@ -23,9 +23,9 @@ extern "C" void sys_kdb_ke()
 {
   cpu_lock.lock();
   Thread *t = current_thread();
+  unsigned *x = (unsigned *)t->regs()->ip();
 
   //arriving from outx function
-  unsigned *x = (unsigned *)t->regs()->ip();
   if(t->regs()->r[29] == (Mword)-0x24 && t->regs()->r[2] & (1 << 31)) //ip && r3
     {
       NOT_IMPL_PANIC;

@@ -1,0 +1,76 @@
+Do "make DEPS" for full fine-grained dependency information.
+
+---
+
+    kip
+config
+    kip
+
+---
+
+    kip_init
+    mem_unit
+cpu
+    kip_init
+    mem_layout
+    mem_unit
+
+---
+
+    vm
+jdb
+    thread
+    vm
+
+---
+
+    config
+kip
+    config
+
+---
+
+    mem_layout
+    mem_unit
+    cpu
+kip_init
+    cpu
+    mem_layout
+    mem_unit
+
+---
+
+    kip_init
+    mem_unit
+    cpu
+mem_layout
+    kip_init
+
+---
+
+    kip_init
+    cpu
+mem_unit
+    cpu
+    kip_init
+    mem_layout
+
+---
+
+    vm
+    jdb
+thread
+    vm
+
+---
+
+    thread
+    jdb
+vm
+    jdb
+    thread
+
+---
+
+TOTAL CIRCULAR DEPS:
+17

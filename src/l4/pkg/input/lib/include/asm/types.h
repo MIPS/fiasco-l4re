@@ -23,6 +23,8 @@ typedef unsigned int __u32;
 #define BITS_PER_LONG 32
 #elif defined (ARCH_sparc)
 #define BITS_PER_LONG 32
+#elif defined (ARCH_mips)
+#define BITS_PER_LONG 32
 #else
 #define Add this arch here
 #endif

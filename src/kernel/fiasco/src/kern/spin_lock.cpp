@@ -8,6 +8,9 @@ public:
   enum Lock_init { Unlocked = 0 };
 };
 
+//--------------------------------------------------------------------------
+INTERFACE [!mips32]:
+
 /**
  * \brief Basic spin lock.
  *
@@ -15,6 +18,20 @@ public:
  * In the UP case it is in fact just the Cpu_lock.
  */
 template<typename Lock_t = char>
+class Spin_lock : public Spin_lock_base
+{
+};
+
+//--------------------------------------------------------------------------
+INTERFACE [mips32]:
+
+/**
+ * \brief Basic spin lock.
+ *
+ * Also disables lock IRQs for the time the lock is held.
+ * In the UP case it is in fact just the Cpu_lock.
+ */
+template<typename Lock_t = Mword>
 class Spin_lock : public Spin_lock_base
 {
 };

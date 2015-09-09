@@ -1,0 +1,56 @@
+-- vi:ft=lua
+
+-- malta platform in io/config/malta.devs
+
+local Res = Io.Res
+local Hw = Io.Hw
+
+Io.hw_add_devices
+{
+  PCI0 = Hw.Pci_memport_root_bridge
+  {
+    hid          = "PNP0A03";
+    pcictrl      = 0x1be00000;
+    pcictrl_size = 0x2000;
+  },
+
+  SYSPORT = Hw.Device
+  {
+    hid = "System Controller Ports";
+    Res.mmio(0x18000000, 0x18003fff);
+    --Res.mmio(0x180003b0, 0x180003bf); -- MDA
+    --Res.mmio(0x180003c0, 0x180003df); -- EGA/VGA
+  },
+
+  UART = Hw.Device
+  {
+    hid = "Malta UART",
+    Res.mmio(0x18000000, 0x18003fff);
+    --Res.mmio(0x18000000, 0x180003ff);
+    Res.irq(4),
+  },
+
+  -- Legacy VGA config Ports
+--  VGA = Hw.Device
+--  {
+--    hid = "PNP0900";
+--    Res.mmio(0x180003b0, 0x180003bf); -- MDA
+--    Res.mmio(0x180003c0, 0x180003df); -- EGA/VGA
+--  },
+
+  PS2 = Hw.Device
+  {
+    hid = "PNP0303",
+    Res.mmio(0x18000000, 0x18003fff);
+    --Res.mmio(0x18000060, 0x18000067),
+    Res.irq(1),
+    Res.irq(12)
+  },
+
+  RTC = Hw.Device
+  {
+    hid = "PNP0B00";
+    Res.mmio(0x18000000, 0x18003fff);
+    --Res.mmio(0x18000070, 0x18000071),
+  }
+}

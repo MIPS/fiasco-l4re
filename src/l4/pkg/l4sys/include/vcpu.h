@@ -36,10 +36,17 @@ typedef struct l4_vcpu_state_t
   l4_vcpu_regs_t       r;             ///< Register state
   l4_vcpu_ipc_regs_t   i;             ///< IPC state
 
+#if defined (ARCH_mips) // reinterpret_cast on uint16 causes addr error exception; use uint32
+  l4_uint32_t          state;         ///< Current vCPU state
+  l4_uint32_t          saved_state;   ///< Saved vCPU state
+  l4_uint32_t          sticky_flags;  ///< Pending flags
+  l4_uint32_t          _reserved;     ///< \internal
+#else
   l4_uint16_t          state;         ///< Current vCPU state
   l4_uint16_t          saved_state;   ///< Saved vCPU state
   l4_uint16_t          sticky_flags;  ///< Pending flags
   l4_uint16_t          _reserved;     ///< \internal
+#endif
 
   l4_cap_idx_t         user_task;     ///< User task to use
 

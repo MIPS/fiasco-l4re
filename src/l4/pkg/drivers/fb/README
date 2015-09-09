@@ -1,0 +1,13 @@
+Framebuffer driver library -- L4_DRIVER
+
+Subdirectories
+
+  contrib:        Linux 3.10.14 video driver sources.
+                  - Source files have been modified where necessary (search for
+                    L4_DRIVERS)
+  include:        External API
+  linux_include:  Linux 3.10.14 headers.
+                  - Some header files are original, some have only the
+                    interesting parts included, and some are empty or stub
+                    headers to fulfill #include directives.
+  src:            - Library implementation

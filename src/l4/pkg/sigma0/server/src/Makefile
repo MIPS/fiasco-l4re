@@ -12,6 +12,7 @@ DEFAULT_RELOC_amd64 := 0x00100000
 DEFAULT_RELOC_arm   := 0x00090000
 DEFAULT_RELOC_sparc := 0x01200000
 DEFAULT_RELOC_ppc32 := 0x00100000
+DEFAULT_RELOC_mips  := 0x00100000
 RELOC_PHYS          := y
 
 PRIVATE_INCDIR	= $(SRC_DIR)
@@ -23,6 +24,7 @@ SRC_CC_amd64-l4f := ioports_x86.cc
 SRC_CC_arm-l4f   := ioports_none.cc
 SRC_CC_ppc32-l4f := ioports_none.cc
 SRC_CC_sparc-l4f := ioports_none.cc
+SRC_CC_mips-l4f  := ioports_none.cc
 SRC_C  := support.c
 SRC_S  := $(addprefix ARCH-$(ARCH)/, crt0.S)
 
@@ -30,3 +32,4 @@ include $(L4DIR)/mk/prog.mk
 CRT1_stat_bin   =
 
 CXXFLAGS	+= -DL4_NO_RTTI -fno-rtti -fno-exceptions -Wall
+OPTS	        = -g # XXXKYMA for correct inline function

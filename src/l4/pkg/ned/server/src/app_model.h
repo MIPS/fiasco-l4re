@@ -16,6 +16,9 @@
 #include "remote_mem.h"
 #include "app_task.h"
 #include "debug.h"
+#if defined(ARCH_mips)
+#include <l4/sys/mem_layout.h>
+#endif
 
 #if 0
 namespace Ldr {
@@ -48,8 +51,13 @@ struct App_model : public Ldr::Base_app_model<Stack>
 
   enum
   {
+#if defined(ARCH_mips)
+    Utcb_area_start        = Mem_layout::Utcb_area_start,
+    Kip_address            = Mem_layout::Kip_address,
+#else
     Utcb_area_start        = 0xb3000000,
     Kip_address            = 0xa0000000,
+#endif
   };
 
   typedef L4Re::Util::Ref_cap<L4Re::Dataspace>::Cap Const_dataspace;

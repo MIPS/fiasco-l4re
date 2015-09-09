@@ -13,7 +13,7 @@ private:
   static Static_object<Kernel_task> _t;
 };
 
-IMPLEMENTATION[!(arm || ppc32 || sparc)]:
+IMPLEMENTATION[!(arm || ppc32 || sparc || mips32)]:
 
 #include "config.h"
 #include "globals.h"

@@ -2,7 +2,7 @@ PKGDIR          ?= ../..
 L4DIR           ?= $(PKGDIR)/../..
 
 TARGET           = dhcp_clnt
-SYSTEMS          = x86-l4f arm-l4f
+SYSTEMS          = x86-l4f arm-l4f mips-l4f
 SRC_C            = main.c 
 REQUIRES_LIBS    = ankh_netboot ankh
 

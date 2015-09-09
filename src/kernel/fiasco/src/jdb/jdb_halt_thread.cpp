@@ -2,7 +2,6 @@ IMPLEMENTATION:
 
 #include <cstdio>
 #include "entry_frame.h"
-#include "gdt.h"
 #include "jdb_module.h"
 #include "jdb_kobject.h"
 #include "static_init.h"
@@ -17,6 +16,10 @@ private:
 };
 
 Kobject *Jdb_halt_thread::threadid;
+
+IMPLEMENTATION [ia32, amd64, ux]:
+
+#include "gdt.h"
 
 PUBLIC
 Jdb_module::Action_code
@@ -37,6 +40,29 @@ Jdb_halt_thread::action(int cmd, void *&, char const *&, int &)
 
   return NOTHING;
 }
+
+IMPLEMENTATION [mips32]:
+
+PUBLIC
+Jdb_module::Action_code
+Jdb_halt_thread::action(int cmd, void *&, char const *&, int &)
+{
+  if (cmd != 0)
+    return NOTHING;
+
+  Thread *t = Kobject::dcast<Thread_object*>(threadid);
+
+  if (!t)
+    return NOTHING;
+
+  t->regs()->status &= ~(Cp0_Status::ST_KSU_MASK | Cp0_Status::ST_IE); // kernel mode disable interrupts
+  t->regs()->ip(reinterpret_cast<Address>(&Thread::halt_current));
+  putchar('\n');
+
+  return NOTHING;
+}
+
+IMPLEMENTATION:
 
 PUBLIC
 Jdb_module::Cmd const *

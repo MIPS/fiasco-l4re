@@ -64,7 +64,7 @@ public:
 
 };
 
-IMPLEMENTATION:
+IMPLEMENTATION [!mips32]:
 
 #include "io.h"
 #include <cassert>

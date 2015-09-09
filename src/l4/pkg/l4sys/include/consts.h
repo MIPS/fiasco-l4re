@@ -28,6 +28,7 @@
 
 #include <l4/sys/compiler.h>
 #include <l4/sys/l4int.h>
+#include <l4/bid_config.h>
 
 /**
  * \addtogroup l4_cap_api
@@ -261,6 +262,9 @@ enum l4_default_caps_t
   L4_BASE_ICU_CAP       = 6UL << L4_CAP_SHIFT,
   /// Capability selector for the scheduler cap.   \hideinitializer
   L4_BASE_SCHEDULER_CAP = 7UL << L4_CAP_SHIFT,
+#ifdef CONFIG_PLATFORM_TYPE_karma_guest
+  L4_BASE_INTERVM_CAP = 9UL << L4_CAP_SHIFT,
+#endif
 };
 
 /**

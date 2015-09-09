@@ -88,6 +88,28 @@ namespace L4
     _regs->write<unsigned char>(IER, 0);
   }
 
+  bool Uart_16550::enable_rx_irq(bool enable)
+  {
+#if 0
+      _regs->write<unsigned char>(IER, 0);
+
+      /* clearall interrupts */
+      _regs->read<unsigned char>(MSR); /* IRQID 0*/
+      _regs->read<unsigned char>(IIR); /* IRQID 1*/
+      _regs->read<unsigned char>(TRB); /* IRQID 2*/
+      _regs->read<unsigned char>(LSR); /* IRQID 3*/
+
+      /* Enable RX interrupt */
+      if (enable)
+        _regs->write<unsigned char>(IER, 1);
+
+      return true;
+#else
+      (void)enable;
+      return false;
+#endif
+  }
+
   bool Uart_16550::change_mode(Transfer_mode m, Baud_rate r)
   {
     unsigned long old_lcr = _regs->read<unsigned char>(LCR);

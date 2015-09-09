@@ -48,7 +48,7 @@ Mem_space::peek(T const *addr, bool user_space)
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION[arm || ia32 || amd64]:
+IMPLEMENTATION[arm || ia32 || amd64 || mips32]:
 
 IMPLEMENT_DEFAULT inline
 template< typename T >

@@ -170,6 +170,35 @@ asm
   );
 static void setup_user_state_arch(L4vcpu::Vcpu *) { }
 static void handler_prolog() {}
+
+#elif defined(ARCH_mips)
+asm
+(
+  ".p2align 14                      \t\n" // mapping must be L4_PAGESHIFT aligned
+  ".global my_super_code            \t\n"
+  ".global my_super_code_excp       \t\n"
+  ".global my_super_code_excp_after \t\n"
+  "my_super_code:                   \t\n"
+  "1: addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "my_super_code_excp:              \t\n"
+  "   mfc0  $t0, $10, 0             \t\n" /* break inst enters jdb, use mfc0 to trigger CpU exception */
+  "my_super_code_excp_after:        \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   b 1b                          \t\n"
+  "   nop                           \t\n"
+  );
+static void setup_user_state_arch(L4vcpu::Vcpu *) { }
+static void handler_prolog() {}
+
 #else
 #error Add your architecture.
 #endif
@@ -177,6 +206,7 @@ static void handler_prolog() {}
 
 static void handler(void)
 {
+  printf("enterring handler...\n");
   handler_prolog();
 
   vcpu->state()->clear(L4_VCPU_F_EXCEPTIONS);
@@ -189,6 +219,7 @@ static void handler(void)
   // values
   if (vcpu->is_page_fault_entry())
     {
+      printf("VCPU pagefault\n");
       vcpu_task->map(L4Re::This_task, l4_fpage((l4_addr_t)my_super_code,
                                                L4_PAGESHIFT, L4_FPAGE_RWX),
                                                super_code_map_addr);
@@ -207,11 +238,15 @@ static void handler(void)
         printf("Unclassifiable message\n");
     }
   else
-  // we should also check the exception number here
+  {
+    printf("VCPU exception %lx, ip=%lx\n", vcpu->r()->err, vcpu->r()->ip);
+    vcpu->print_state();
+    // we should also check the exception number here
     if (vcpu->r()->ip == (l4_addr_t)my_super_code_excp - (l4_addr_t)my_super_code + super_code_map_addr)
       vcpu->r()->ip += my_super_code_excp_after - my_super_code_excp;
+  }
 
-  //printf("resume\n");
+  printf("resume\n");
   L4::Cap<L4::Thread> self;
   self->vcpu_resume_commit(self->vcpu_resume_start());
   while(1)

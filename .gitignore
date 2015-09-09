@@ -1,0 +1,54 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+##.*
+*.o
+*.o.*
+*.a
+##*.s
+##*.i
+##*.lst
+##*.elf
+##*.bin
+##*.gz
+*.bz2
+*.lzma
+*.xz
+*.lzo
+##*.patch
+*.gcno
+
+#
+# Top-level generic files
+#
+/tags
+/TAGS
+
+#
+# git files that we don't want to ignore even it they are dot-files
+#
+!.gitignore
+
+# other files
+cscope.*
+ncscope.*
+tags
+*.vim
+
+##*.orig
+*~
+\#*#
+
+#
+# Generated build directory
+#
+src/kernel/fiasco/build/
+src/l4/build/

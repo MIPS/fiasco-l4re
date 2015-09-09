@@ -1,6 +1,7 @@
 PKGDIR		?= ../..
 L4DIR		?= $(PKGDIR)/../..
 
+SYSTEMS		= arm-l4f
 TARGET		= virtio-switch
 SRC_CC		= main.cc
 SRC_CC_IS_CXX11 = y

@@ -17,6 +17,9 @@
 #if defined(CONFIG_ARM)
   DUMP_MEMBER1 (THREAD, Thread, _exc_cont._ip,          EXCEPTION_IP)
   DUMP_MEMBER1 (THREAD, Thread, _exc_cont._psr,         EXCEPTION_PSR)
+#elif defined(CONFIG_MIPS32)
+  DUMP_MEMBER1 (THREAD, Thread, _exc_cont._ip,          EXCEPTION_IP)
+  DUMP_MEMBER1 (THREAD, Thread, _exc_cont._status,      EXCEPTION_SR)
 #endif
   DUMP_MEMBER1 (THREAD, Thread, _magic,			MAGIC)
   DUMP_OFFSET  (THREAD, MAX, sizeof (Thread))
@@ -81,4 +84,8 @@
 
   //physical atddress of kernel image
   DUMP_CONSTANT(KERNEL__START, Mem_layout::Kernel_start)
+#endif
+#ifdef CONFIG_MIPS32
+  DUMP_CONSTANT (TRAPREGS_SIZ, sizeof(Trap_state_regs))
+  DUMP_MEMBER1 (THREAD, Context, _saved_ksp, SAVED_KSP)
 #endif

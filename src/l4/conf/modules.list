@@ -5,7 +5,10 @@
 #
 # add kernel command line arguments with
 #  kernel fiasco arguments...
-# the seconds argument here is the binary name
+# the second argument here is the binary name
+# fiasco flags, see kern/koptions-def.h
+#  -tbuf_entries <int>    # change default # of trace buffers entries
+#  -serial_esc            # needs to be set when using jdb
 # 
 # add sigma command line arguments with
 #  sigma0 sigma0 arguments...
@@ -13,7 +16,6 @@
 #
 # add roottask command line arguments with
 #  roottask moe arguments...
-# the second roottask is the binary name
 #
 # modaddr: address where modules start, relative to begin of RAM
 #   this statement is either global (before first entry statement)
@@ -23,7 +25,7 @@
 # - module file: add file
 # - module-glob /some/path/*.foo: add all file matching
 # - module-perl perl-code: Perl code returns array of files to include
-# - moe file.cfg: expands to
+# - moe file.cfg: invokes rom/ned as init program and expands to
 #        roottask moe rom/file.cfg
 #        module file.cfg
 #
@@ -41,63 +43,270 @@
 # - default-kernel: set default kernel including arguments
 # - default-sigma0: set default sigma0 including arguments
 # - default-roottask: set default roottask including arguments
+#
+# moe flags must be specified before any other args (such as lua cfg files) or
+# the options are ignored. An optional empty '--' indicates that moe should pass
+# all remaining options to the init program.
+#
+# Multiple flags can be joined with ",|+".
+#      {"--debug=",     hdl_debug },      # info|warn|boot|server|exceptions|loader|ns or all
+#      {"--init=",      hdl_init },
+#      {"--l4re-dbg=",  hdl_l4re_dbg },   # info|warn|boot|server|exceptions|loader|ns or all
+#      {"--ldr-flags=", hdl_ldr_flags },  # eager_map|all_segs_cow|pinned_segs|exit
+#
+# ned has a flag for setting the priority at which the lua scripts are executed.
+# Pass this flag via moe.
+# i.e.
+# roottask moe --l4re-dbg=all -- --lua-prio=<dec|hex unsigned> rom/lua1.cfg rom/lua2.cfg
 
-modaddr 0x01100000
+modaddr 0x00800000
 
-default-kernel fiasco -serial_esc
-default-bootstrap bootstrap
+# use -serial_esc when using jdb
+# default-kernel fiasco -serial_esc
+default-kernel fiasco
+default-bootstrap bootstrap -presetmem=0
 
 entry hello
-roottask moe --init=rom/hello
-module l4re
-module hello
+  roottask moe --init=rom/hello
+# roottask moe --init=rom/hello --ldr-flags=eager_map --l4re-dbg=all --debug=boot
+  module l4re
+  module hello
+
+entry ex_vcpuvz
+  roottask moe --init=rom/ex_vcpuvz
+  module l4re
+  module ex_vcpuvz
+
+entry ex_vcpu
+  roottask moe --init=rom/ex_vcpu
+  module l4re
+  module ex_vcpu
+
+entry ex_vmm
+  roottask moe --init=rom/ex_vmm
+  module l4re
+  module ex_vmm
+  module guest_hello
+
+entry vmmdemo-cfg
+  roottask moe rom/vmmdemo.cfg
+  module x86-legacy.devs
+  module l4lx-x86.io
+  module l4re
+  module io
+  module ned
+  module vmmdemo.cfg
+  module ex_vmm
+  module guest_hello
+
+# Run karma VMM with guest VM running linux
+entry karma
+  kernel   fiasco -serial_esc
+  roottask moe rom/karma-mips.cfg
+  module   karma-mips.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   fb-drv
+  module   rtc
+  module   con
+  module   ned
+  module   cons
+  module   karma
+  module   vmlinux
+  module   guestfs.img.gz
+
+# Run karma VMM with guest VM running linux
+entry karma_machvirt
+  kernel   fiasco -serial_esc
+  roottask moe rom/karma_machvirt.cfg
+  module   karma_machvirt.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   fb-drv
+  module   rtc
+  module   con
+  module   ned
+  module   cons
+  module   karma
+  module   vmlinux-machvirt
+  module   guestfs.img.gz
+
+# Run karma VMM with guest VM running SMP linux
+entry karma_paravirt
+  kernel   fiasco -serial_esc
+  roottask moe rom/karma_paravirt.cfg
+  module   karma_paravirt.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   fb-drv
+  module   rtc
+  module   con
+  module   ned
+  module   cons
+  module   karma
+  module   vmlinux-paravirt
+  module   guestfs.img.gz
+
+# Run karma VMM with 3 guest VMs running SMP linux and 2 Fiasco.OC
+# increase priority of ned lua script so that a non-yielding vm can not prevent
+# the script processing from running to completion.
+entry karma_smp_sys
+  kernel   fiasco -serial_esc
+  roottask moe --debug= -- --lua-prio=0x80 rom/karma_smp_sys.cfg rom/karma_smp_sys-vm.cfg
+  module   karma_smp_sys.cfg
+  module   karma_smp_sys-vm.cfg
+  module   karma_smp_sys-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   ned
+  module   cons
+  module   karma_linux
+  module   vmlinux-paravirt
+  module   guestfs.img.gz
+  module   karma_fiasco
+  module   guest_os
+
+# Run karma VMM with demo karma_hello guest VM
+entry karma_hello
+  kernel   fiasco -serial_esc
+  roottask moe rom/karma-hello.cfg
+  module   karma-hello.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   ned
+  module   cons
+  module   karma_fiasco
+  module   karma_hello
+
+# Run karma VMM with 2 guest VMs running linux
+# increase priority of ned lua script so that a non-yielding vm can not prevent
+# the script processing from running to completion.
+entry karma_sys
+  kernel   fiasco -serial_esc
+  roottask moe -- --lua-prio=0x80 rom/karma_sys-mips.cfg rom/karma_vm1-mips.cfg rom/karma_vm2-mips.cfg
+  module   karma_sys-mips.cfg
+  module   karma_vm1-mips.cfg
+  module   karma_vm2-mips.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   fb-drv
+  module   rtc
+  module   con
+  module   ned
+  module   cons
+  module   karma
+  module   starter
+  module   vmlinux
+  module   guestfs.img.gz
+  module   vmlinux-simple
+
+# Run karma VMM with guest VM running Fiasco.OC
+entry karma_fiasco
+  kernel   fiasco -serial_esc
+  roottask moe rom/karma_fiasco.cfg
+  module   karma_fiasco.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   ned
+  module   cons
+  module   karma_fiasco
+  module   guest_os
+
+# Run karma VMM with 2 guest VMs running linux and Fiasco.OC
+# increase priority of ned lua script so that a non-yielding vm can not prevent
+# the script processing from running to completion.
+entry karma_fiasco_sys
+  kernel   fiasco -serial_esc
+  roottask moe -- --lua-prio=0x80 rom/karma_sys-mips.cfg rom/linux_vm1.cfg rom/fiasco_vm2.cfg
+  module   karma_sys-mips.cfg
+  module   linux_vm1.cfg
+  module   fiasco_vm2.cfg
+  module   malta-io.vbus
+  module   malta.devs
+  module   l4re
+  module   io
+  module   loader
+  module   fb-drv
+  module   rtc
+  module   con
+  module   ned
+  module   cons
+  module   starter
+  module   karma_linux
+  module   vmlinux
+  module   guestfs.img.gz
+  module   karma_fiasco
+  module   guest_os
+
+entry ex_shmc
+  kernel   fiasco -serial_esc
+  roottask moe rom/shmc.cfg
+  module shmc.cfg
+  module l4re
+  module ned
+  module ex_shmc
+
+entry ex_shmc_task
+  kernel   fiasco -serial_esc
+  roottask moe rom/shmc_task.cfg
+  module shmc_task.cfg
+  module l4re
+  module ned
+  module ex_shmc_prod
+  module ex_shmc_cons
+
+entry ex_shared_ds
+  kernel   fiasco -serial_esc
+  roottask moe rom/shared_ds.lua
+  module shared_ds.lua
+  module l4re
+  module ned
+  module ex_l4re_ds_srv
+  module ex_l4re_ds_clnt
 
 entry hello-cfg
-kernel fiasco -serial_esc
-roottask moe rom/hello.cfg
-module l4re
-module ned
-module hello.cfg
-module hello
+  roottask moe --debug=info rom/hello.cfg
+  module x86-legacy.devs
+  module l4lx-x86.io
+  module l4re
+  module io
+  module ned
+  module cons
+  module hello.cfg
+  module hello
 
-entry hello-shared
-roottask moe --init=rom/ex_hello_shared
-module l4re
-module ex_hello_shared
-module libld-l4.so
-module libl4util.so
-module libl4sys.so
-module libl4sys-direct.so
-module libdl.so
-module lib4re.so
-module lib4re-util.so
-module libc_support_misc.so
-module libc_be_socket_noop.so
-module libc_be_l4refile.so
-module libc_be_l4re.so
-module libsupc++.so
-module libuc_c.so
+entry client-server-cfg
+  roottask moe rom/clntsrv.cfg
+  module l4re
+  module ned
+  module clntsrv.cfg
+  module ex_clntsrv-server
+  module ex_clntsrv-client
 
-entry L4Linux ARM
-roottask moe rom/l4lx.cfg
-module l4re
-module ned
-module l4lx.cfg
-module io
-module arm-rv.io
-module vmlinuz.arm
-module ramdisk-arm.rd
-
-entry L4Linux-mag-x86
-roottask moe rom/l4lx-gfx.cfg
-module l4re
-module ned
-module l4lx-gfx.cfg
-module io
-module fb-drv
-module mag
-module x86-legacy.devs
-module l4lx-x86.io
-module vmlinuz
-module ramdisk-x86.rd
-
+entry ex_thread_migrate
+  kernel   fiasco -serial_esc
+  roottask moe rom/thread_migrate.cfg
+  module thread_migrate.cfg
+  module l4re
+  module ned
+  module ex_thread_migrate

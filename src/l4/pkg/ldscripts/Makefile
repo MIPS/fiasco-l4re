@@ -3,18 +3,28 @@ L4DIR		?= $(PKGDIR)/../..
 
 SYSTEMS		= $(SYSTEMS_PLAIN)
 
+ifeq ($(CONFIG_PAGE_SIZE_4KB),y)
+L4_PAGE_SIZE    := 0x1000
+endif
+ifeq ($(CONFIG_PAGE_SIZE_16KB),y)
+L4_PAGE_SIZE    := 0x4000
+endif
+
 # Page sizes for linker
 MAXPAGESIZE_amd64    := 0x200000
-COMMONPAGESIZE_amd64 := 0x1000
+COMMONPAGESIZE_amd64 := $(L4_PAGE_SIZE)
 
-MAXPAGESIZE_x86      := 0x1000
-COMMONPAGESIZE_x86   := 0x1000
+MAXPAGESIZE_x86      := $(L4_PAGE_SIZE)
+COMMONPAGESIZE_x86   := $(L4_PAGE_SIZE)
 
-MAXPAGESIZE_arm      := 0x1000
-COMMONPAGESIZE_arm   := 0x1000
+MAXPAGESIZE_arm      := $(L4_PAGE_SIZE)
+COMMONPAGESIZE_arm   := $(L4_PAGE_SIZE)
 
-MAXPAGESIZE_ppc32    := 0x1000
-COMMONPAGESIZE_ppc32 := 0x1000
+MAXPAGESIZE_mips     := $(L4_PAGE_SIZE)
+COMMONPAGESIZE_mips  := $(L4_PAGE_SIZE)
+
+MAXPAGESIZE_ppc32    := $(L4_PAGE_SIZE)
+COMMONPAGESIZE_ppc32 := $(L4_PAGE_SIZE)
 
 LD_SCRIPTS      = main_stat.ld main_rel.ld main_dyn.ld
 
@@ -26,6 +36,7 @@ LD_SCRIPTS      = main_stat.ld main_rel.ld main_dyn.ld
 # to find the uclibc files
 UCLIBC_ARCH_x86   := i386
 UCLIBC_ARCH_arm   := arm
+UCLIBC_ARCH_mips  := mips
 UCLIBC_ARCH_amd64 := x86_64
 UCLIBC_ARCH_ppc32 := powerpc
 UCLIBC_ARCH_sparc := sparc

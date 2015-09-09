@@ -65,7 +65,7 @@ typedef union dtv
 #ifndef __ASSEMBLER__
 
 /* Get system call information.  */
-# include <sysdep.h>
+//# include <sysdep.h>
 
 /* The TP points to the start of the thread blocks.  */
 # define TLS_DTV_AT_TP	1
@@ -76,7 +76,7 @@ typedef union dtv
 typedef struct
 {
   dtv_t *dtv;
-  void *private;
+  void *private_data;
 } tcbhead_t;
 
 /* This is the size of the initial TCB.  Because our TCB is before the thread
@@ -119,13 +119,13 @@ typedef struct
 /* Code to initially initialize the thread pointer.  This might need
    special attention since 'errno' is not yet available and if the
    operation can cause a failure 'errno' must not be touched.  */
-# define TLS_INIT_TP(tcbp, secondcall) \
-  ({ INTERNAL_SYSCALL_DECL (err);					\
-     long result_var;							\
-     result_var = INTERNAL_SYSCALL (set_thread_area, err, 1,		\
-				    (char *) (tcbp) + TLS_TCB_OFFSET);	\
-     INTERNAL_SYSCALL_ERROR_P (result_var, err)				\
-       ? "unknown error" : NULL; })
+static inline char const *TLS_INIT_TP(void *tcbp, int secondcall)
+{
+  (void)secondcall;
+  register char *v asm ("v0")  = (char *)tcbp + TLS_TCB_OFFSET; 
+  asm volatile (".set push; .set noreorder; mtc0   %0,$4,2; .set pop" : : "r" (v));
+  return NULL;
+}
 
 /* Return the address of the dtv for the current thread.  */
 # define THREAD_DTV() \

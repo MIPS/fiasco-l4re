@@ -335,6 +335,7 @@ Jdb_list_timeouts::list()
               switch (int c=Jdb_core::getchar())
                 {
                 case KEY_CURSOR_UP:
+		case 'k':
                   if (y > 0)
                     y--;
                   else
@@ -345,6 +346,7 @@ Jdb_list_timeouts::list()
                     }
                   break;
                 case KEY_CURSOR_DOWN:
+		case 'j':
                   if (y < y_max)
                     y++;
                   else
@@ -358,6 +360,7 @@ Jdb_list_timeouts::list()
                     }
                   break;
                 case KEY_PAGE_UP:
+		case 'K':
                     {
                       Iter i = current;
                       current -= Jdb_screen::height()-3;
@@ -367,6 +370,7 @@ Jdb_list_timeouts::list()
                     }
                   break;
                 case KEY_PAGE_DOWN:
+		case 'J':
                     {
                       Iter i = current;
                       current += Jdb_screen::height()-3;
@@ -378,11 +382,13 @@ Jdb_list_timeouts::list()
                     }
                   break;
                 case KEY_CURSOR_HOME:
+		case 'H':
                   redraw = current != first;
                   current = first;
                   y = 0;
                   break;
                 case KEY_CURSOR_END:
+		case 'L':
                   redraw = current != end;
                   current = end;
                   y = y_max;

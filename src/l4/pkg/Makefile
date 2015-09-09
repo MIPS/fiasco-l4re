@@ -17,6 +17,9 @@ ifneq ($(S),)
   ALL_SUBDIRS := $(shell echo $(S) | tr ':,' ' ')
 endif
 
+# KYMA define packages we want to skip over and not build NOBUILD_SUBDIRS
+NOBUILD_SUBDIRS	= $(patsubst %/KYMA_nobuild, %, \
+			$(wildcard $(addsuffix /KYMA_nobuild,$(ALL_SUBDIRS))))
 # the broken packages
 BROKEN_SUBDIRS	= $(patsubst %/broken, %, \
 			$(wildcard $(addsuffix /broken,$(ALL_SUBDIRS))))
@@ -24,7 +27,7 @@ BROKEN_SUBDIRS	= $(patsubst %/broken, %, \
 OBSOLETE_SUBDIRS = $(patsubst %/obsolete, %, \
 			$(wildcard $(addsuffix /obsolete,$(ALL_SUBDIRS))))
 # and the packages we are supposed to build
-BUILD_SUBDIRS  = $(filter-out $(BROKEN_SUBDIRS) $(OBSOLETE_SUBDIRS), \
+BUILD_SUBDIRS  = $(filter-out $(BROKEN_SUBDIRS) $(OBSOLETE_SUBDIRS) $(NOBUILD_SUBDIRS), \
                    $(ALL_SUBDIRS))
 
 # force that every package to be built has a Control and Makefile
@@ -241,6 +244,7 @@ print-subdirs:
 	@echo $(BUILD_SUBDIRS)
 	@echo obsolete: $(OBSOLETE_SUBDIRS)
 	@echo broken: $(BROKEN_SUBDIRS)
+	@echo KYMA_nobuild: $(NOBUILD_SUBDIRS) # KYMA
 
 help:
 	@echo "Specify one of the following targets:"

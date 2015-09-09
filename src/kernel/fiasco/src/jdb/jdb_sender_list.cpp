@@ -139,7 +139,7 @@ Jdb_module::Cmd const * Jdb_sender_list::cmds() const
   static Cmd cs[] =
     {
 	{ 0, "ls", "senderlist", "%q",
-          "senderlist\tshow sender-list of thread", &object }
+          "ls|senderlist<id>\tshow sender-list of thread or ipc-gate", &object }
     };
 
   return cs;

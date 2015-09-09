@@ -58,6 +58,8 @@ Jdb_trap_state_module::action (int cmd, void *&argbuf, char const *&fmt, int &ne
 	  next = *c; argbuf = &cpu; fmt = "%i";
 	  return EXTRA_INPUT_WITH_NEXTCHAR;
 	}
+      else
+	Jdb::foreach_cpu(&print_trap_state);
     }
   else
     print_trap_state(cpu);
@@ -78,7 +80,7 @@ Jdb_trap_state_module::cmds() const
 {
   static char c;
   static Cmd cs[] =
-    { { 0, "", "cpustate", "%C", "cpustate all|<cpunum>\tdump state of CPU", &c } };
+    { { 0, "c", "cpustate", "%C", "c|cpustate [all]|<cpunum>\tdump state of CPU", &c } };
 
   return cs;
 }

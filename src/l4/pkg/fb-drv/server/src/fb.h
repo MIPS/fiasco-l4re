@@ -68,3 +68,9 @@ class Dummy_fb : public Phys_fb
 public:
   bool setup_drv(Prog_args *pa);
 };
+
+class Fb_drv : public Phys_fb
+{
+public:
+  bool setup_drv(Prog_args *pa);
+};

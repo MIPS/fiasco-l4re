@@ -1,0 +1,100 @@
+# vim:set ft=l4mods:
+# Module configuration file for single image mode
+#
+# kernel, sigma0 and moe are always loaded automatically
+#
+# add kernel command line arguments with
+#  kernel fiasco arguments...
+# the second argument here is the binary name
+# fiasco flags, see kern/koptions-def.h
+#  -tbuf_entries <int>    # change default # of trace buffers entries
+#  -serial_esc            # needs to be set when using jdb 
+# 
+# add sigma command line arguments with
+#  sigma0 sigma0 arguments...
+# the second sigma0 is the binary name
+#
+# add roottask command line arguments with
+#  roottask moe arguments...
+#
+# modaddr: address where modules start, relative to begin of RAM 
+#   this statement is either global (before first entry statement)
+#   or per entry
+#
+# 'module' variants
+# - module file: add file
+# - module-glob /some/path/*.foo: add all file matching
+# - module-perl perl-code: Perl code returns array of files to include
+# - moe file.cfg: invokes rom/ned as init program and expands to
+#        roottask moe rom/file.cfg
+#        module file.cfg
+#
+# Define a module group:
+#  group oftenneedthose
+#  module one 
+#  module two 
+#  module ... 
+
+# Use a module group:
+#  entry someentry
+#  module-group oftenneedthose
+#
+# Set defaults:
+# - default-kernel: set default kernel including arguments
+# - default-sigma0: set default sigma0 including arguments
+# - default-roottask: set default roottask including arguments
+#
+# moe flags must be specified before any other args (such as lua cfg files) or
+# the options are ignored. An optional empty '--' indicates that moe should pass
+# all remaining options to the init program.
+#
+# Multiple flags can be joined with ",|+".
+#      {"--debug=",     hdl_debug },      # info|warn|boot|server|exceptions|loader|ns or all 
+#      {"--init=",      hdl_init },
+#      {"--l4re-dbg=",  hdl_l4re_dbg },   # info|warn|boot|server|exceptions|loader|ns or all 
+#      {"--ldr-flags=", hdl_ldr_flags },  # eager_map|all_segs_cow|pinned_segs|exit
+#
+# ned has a flag for setting the priority at which the lua scripts are executed.
+# Pass this flag via moe.
+# i.e.
+# roottask moe --l4re-dbg=all -- --lua-prio=<dec|hex unsigned> rom/lua1.cfg rom/lua2.cfg
+
+modaddr 0x00800000
+
+# use -serial_esc when using jdb 
+# default-kernel fiasco -serial_esc
+default-kernel fiasco
+default-bootstrap bootstrap -presetmem=0
+
+entry hello
+  roottask moe --init=rom/hello
+# roottask moe --init=rom/hello --ldr-flags=eager_map --l4re-dbg=all --debug=boot
+  module l4re
+  module hello
+
+entry sk_base
+  roottask moe rom/sk_base.cfg
+  module sk_base.cfg
+  module toc.dat
+  module db.dat
+  module l4re
+  module io
+  module ned 
+  module sk_base
+  module sk_hello
+  module sk_olleh
+
+entry hello_intervm
+  roottask moe rom/hello-intervm.cfg
+  module l4re
+  module intervm
+  module ned 
+  module hello-intervm.cfg
+
+entry hello_bringup
+  roottask moe -i
+  module l4re
+#  module intervm
+  module ned 
+#  module hello-intervm.cfg
+

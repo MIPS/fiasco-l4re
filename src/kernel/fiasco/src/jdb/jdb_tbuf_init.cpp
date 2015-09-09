@@ -15,6 +15,7 @@ IMPLEMENTATION:
 #include <cstdlib>
 #include <cstring>
 #include <panic.h>
+#include <stdio.h>
 
 #include "config.h"
 #include "cpu.h"
@@ -54,12 +55,15 @@ void Jdb_tbuf_init::init()
 	panic("Cannot allocate more than %d entries for tracebuffer\n", n);
 
       max_entries(n);
+      printf(">>>>>%s: allocating %d entries\n", __PRETTY_FUNCTION__, n);
       unsigned size = n * sizeof(Tb_entry_union);
 
+      printf(">>>>>%s: allocating status @ %p\n", __PRETTY_FUNCTION__, status());
       if (!Vmem_alloc::page_alloc((void*) status(), Vmem_alloc::ZERO_FILL, Vmem_alloc::User))
 	panic("jdb_tbuf: alloc status page at " L4_PTR_FMT " failed", 
 	      (Address)Mem_layout::Tbuf_status_page);
 
+      printf(">>>>>%s: allocating buffer @ %p\n", __PRETTY_FUNCTION__, buffer());
       Address va = (Address) buffer();
       for (unsigned i=0; i<size/Config::PAGE_SIZE; i++)
 	{

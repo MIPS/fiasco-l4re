@@ -586,7 +586,7 @@ map(MAPDB* mapdb,
 
         case SPACE::Insert_err_exists:
           WARN("map (%s) skipping area (%p/%lx): " L4_PTR_FMT
-               " -> %p/%lx: " L4_PTR_FMT "(%lx)", SPACE::name,
+               " -> %p/%lx: " L4_PTR_FMT "(%lx)\n", SPACE::name,
                from_id, Kobject_dbg::pointer_to_id(from_id),
                (unsigned long)cxx::int_value<V_pfn>(snd_addr),
                to_id, Kobject_dbg::pointer_to_id(to_id),

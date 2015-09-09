@@ -270,6 +270,7 @@ enum L4_task_ops
   L4_TASK_CAP_INFO_OP    = 2UL,    /**< Cap info */
   L4_TASK_ADD_KU_MEM_OP  = 3UL,    /**< Add kernel-user memory */
   L4_TASK_LDT_SET_X86_OP = 0x11UL, /**< x86: LDT set */
+  L4_TASK_CP0_MIPS_OP    = 0x20UL, /**< mips: CP0 operation */
 };
 
 

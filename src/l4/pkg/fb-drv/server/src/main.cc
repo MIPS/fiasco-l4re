@@ -126,6 +126,8 @@ int main(int argc, char *argv[])
   Lcd_drv_fb arch_fb;
 #elif defined(ARCH_x86) || defined(ARCH_amd64)
   Vesa_fb arch_fb;
+#elif ARCH_mips
+  Fb_drv arch_fb;
 #else
   Dummy_fb arch_fb;
 #endif

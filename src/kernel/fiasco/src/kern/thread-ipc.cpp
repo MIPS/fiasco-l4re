@@ -200,8 +200,11 @@ PRIVATE
 bool
 Thread::handle_page_fault_pager(Thread_ptr const &_pager,
                                 Address pfa, Mword error_code,
-                                L4_msg_tag::Protocol protocol)
+                                L4_msg_tag::Protocol protocol, Address pfault_ip = ~0UL)
 {
+  // use page fault ip if specified. regs()->ip() is wrong in case of double page faults.
+  Address pf_ip = (pfault_ip == ~0UL ? regs()->ip() : pfault_ip);
+
   if (EXPECT_FALSE((state() & Thread_alien)))
     return false;
 
@@ -215,7 +218,7 @@ Thread::handle_page_fault_pager(Thread_ptr const &_pager,
       WARN("CPU%d: Pager of %lx is invalid (pfa=" L4_PTR_FMT
 	   ", errorcode=" L4_PTR_FMT ") to %lx (pc=%lx)\n",
 	   cxx::int_value<Cpu_number>(current_cpu()), dbg_id(), pfa,
-           error_code, cxx::int_value<Cap_index>(_pager.raw()), regs()->ip());
+           error_code, cxx::int_value<Cap_index>(_pager.raw()), pf_ip);
 
 
       LOG_TRACE("Page fault invalid pager", "pf", this, Log_pf_invalid,
@@ -242,7 +245,7 @@ Thread::handle_page_fault_pager(Thread_ptr const &_pager,
   utcb->buffers[1] = L4_fpage::all_spaces().raw();
 
   utcb->values[0] = PF::addr_to_msgword0(pfa, error_code);
-  utcb->values[1] = regs()->ip(); //PF::pc_to_msgword1 (regs()->ip(), error_code));
+  utcb->values[1] = pf_ip;
 
   L4_timeout_pair timeout(L4_timeout::Never, L4_timeout::Never);
 
@@ -259,6 +262,7 @@ Thread::handle_page_fault_pager(Thread_ptr const &_pager,
 
   if (EXPECT_FALSE(r.tag().has_error()))
     {
+      printf("%s: r.tag().has_error()\n", __func__);
       if (utcb->error.snd_phase()
           && (utcb->error.error() == L4_error::Not_existent)
           && PF::is_usermode_error(error_code)

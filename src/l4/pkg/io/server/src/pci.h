@@ -541,6 +541,8 @@ public:
 
   unsigned disable_decoders();
   void restore_decoders(unsigned cmd);
+  void enable_pci_memory();
+  void enable_pci_io();
 
   bool check_pme_status();
 
@@ -551,6 +553,10 @@ private:
   int discover_bar(int bar);
   void discover_expansion_rom();
   void discover_pci_caps();
+
+  void quirk_malta_gt64xx(int *num_bars);
+  void quirk_malta_fixup_irqs();
+  void setup_hid_from_cls();
 };
 
 

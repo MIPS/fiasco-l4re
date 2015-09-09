@@ -1,0 +1,39 @@
+
+modaddr 0x02000000
+
+default-kernel fiasco -serial_esc -tbuf_entries 1024
+default-bootstrap bootstrap -presetmem=0
+
+# example using mag, fb-drv, and spectrum demo
+# make BOOTSTRAP_MODULES_LIST=$WORK_MIPSF/src/l4/conf/examples/mips-fb.list E=mips-fbspectrum S=bootstrap
+entry mips-fbspectrum
+bootstrap bootstrap -serial -presetmem=0
+kernel fiasco -serial_esc -tbuf_entries 1024
+roottask moe rom/mips-fbspectrum.cfg
+module mips-fbspectrum.cfg
+module mips-fb.io
+module malta.devs
+module l4re
+module io
+module ned
+module fb-drv
+module mag
+module ex_fb_spectrum_cc
+
+# example using mag, fb-drv, and fbterminal with hello or dash
+# make BOOTSTRAP_MODULES_LIST=$WORK_MIPSF/src/l4/conf/examples/mips-fb.list E=mips-fbterminal S=bootstrap
+entry mips-fbterminal
+bootstrap bootstrap -serial -presetmem=0
+kernel fiasco -serial_esc -tbuf_entries 1024
+roottask moe rom/mips-fbterminal.cfg
+module mips-fbterminal.cfg
+module mips-fb.io
+module malta.devs
+module l4re
+module io
+module ned
+module fb-drv
+module mag
+module hello
+module dash
+module fbterminal

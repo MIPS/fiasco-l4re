@@ -2,6 +2,8 @@
  * (c) 2010 Alexander Warg <warg@os.inf.tu-dresden.de>,
  *          Torsten Frenzel <frenzel@os.inf.tu-dresden.de>
  *     economic rights: Technische Universität Dresden (Germany)
+ * Copyright (C) 2014 Imagination Technologies Ltd.
+ * Author: Yann Le Du <ledu@kymasys.com>
  *
  * This file is part of TUD:OS and distributed under the terms of the
  * GNU General Public License 2.
@@ -9,6 +11,7 @@
  */
 #include <l4/drivers/uart_pl011.h>
 #include <l4/drivers/uart_omap35x.h>
+#include <l4/drivers/uart_pxa.h>
 #include <l4/io/io.h>
 #include <l4/re/env>
 #include <l4/re/error_helper>
@@ -128,9 +131,66 @@ Serial_drv::handle_irq()
   return L4_EOK;
 }
 
+#ifdef USE_MALTA_UART
+// NOTE: If there is no active receiver for the irq trigger in handle_irq()
+// the irq is silently dropped. The irq will be masked until cleared when
+// get_char and unmask are called in vcon_read. If instead there is a subsequent
+// call to irq receive, that call will never return.
+//
+// A client of the Serial_drv may call vcon_read followed by irq receive (or irq
+// wait) but if the interrupt is raised immediately after vcon_read the trigger
+// will again be lost as there is no way to atomically attach to and unmask the
+// trigger irq.
+//
+// The above imposes the limitation that the uart must be polled using vcon_read
+// for input.
+static int request_malta_uart_resources(L4::Io_register_block_mmio **regs, int
+    *uart_irq)
+{
+  const int malta_uart_port = 0x3F8;
+  l4_addr_t virt_base;
+  l4io_device_handle_t uartdev_hdl;
+  l4io_resource_handle_t uartres_hdl;
+
+  if (l4io_lookup_device("Malta UART", &uartdev_hdl, 0, &uartres_hdl))
+    {
+      printf("serial-drv: Could not find UART iomem\n");
+      return -1;
+    }
+
+  virt_base = l4io_request_resource_iomem(uartdev_hdl, &uartres_hdl);
+  if (virt_base == 0)
+    {
+      printf("serial-drv: Could not map UART iomem\n");
+      return -1;
+    }
+
+  // set malta uart port base
+  virt_base |= malta_uart_port;
+
+  printf("serial-drv: virtual base at %lx\n", virt_base);
+
+  l4io_resource_t res;
+  if (l4io_lookup_resource(uartdev_hdl, L4IO_RESOURCE_IRQ, &uartres_hdl, &res))
+    {
+      printf("serial-drv: Could not find UART irq\n");
+      return -1;
+    }
+
+  *uart_irq = res.start;
+
+  printf("serial-drv: uart_irq is %x\n", *uart_irq);
+
+  *regs = new L4::Io_register_block_mmio(virt_base);
+
+  return 0;
+}
+#endif // USE_MALTA_UART
+
 bool
 Serial_drv::init()
 {
+#ifndef USE_MALTA_UART
   int irq_num = 37;
   l4_addr_t phys_base = 0x1000a000;
 #if 0
@@ -147,8 +207,20 @@ Serial_drv::init()
   printf("serial-drv: virtual base at:%lx\n", virt_base);
 
   L4::Io_register_block_mmio *regs = new L4::Io_register_block_mmio(virt_base);
+
   _uart = new (malloc(sizeof(L4::Uart_pl011))) L4::Uart_pl011(24019200);
   //_uart = new (malloc(sizeof(L4::Uart_omap35x))) L4::Uart_omap35x;
+
+#else
+  int irq_num = 0;
+  L4::Io_register_block_mmio *regs;
+
+  if (request_malta_uart_resources(&regs, &irq_num))
+      return false;
+
+  _uart = new (malloc(sizeof(L4::Uart_16550))) L4::Uart_16550(115200);
+#endif // USE_MALTA_UART
+
   _uart->startup(regs);
 
   _uart_irq = L4Re::Util::cap_alloc.alloc<L4::Irq>();

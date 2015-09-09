@@ -157,7 +157,8 @@ Jdb_log_list::patch_item(Tb_log_table_entry const *e, unsigned char val)
   if (e->patch)
     {
       *(e->patch) = val;
-      Mem_unit::clean_dcache(e->patch);
+      // flush both I and D caches
+      Mem_unit::flush_cache(e->patch, (char*)e->patch + sizeof(val));
     }
 
   for (Tb_log_table_entry *x = _end; x < &_log_table_end; ++x)
@@ -165,7 +166,8 @@ Jdb_log_list::patch_item(Tb_log_table_entry const *e, unsigned char val)
       if (equal(x, e) && x->patch)
         {
           *(x->patch) = val;
-          Mem_unit::clean_dcache(x->patch);
+          // flush both I and D caches
+          Mem_unit::flush_cache(x->patch, (char*)x->patch + sizeof(val));
         }
     }
 }

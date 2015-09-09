@@ -31,7 +31,7 @@
 #define ptrsize long long
 #endif
 
-typedef struct
+typedef struct __jmp_buf_internal_tag
   {
     /* Program counter.  */
     ptrsize __pc;

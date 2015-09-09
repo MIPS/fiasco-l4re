@@ -22,6 +22,7 @@ DEFAULT_RELOC_x86   := 0x002d0000
 DEFAULT_RELOC_amd64 := 0x002d0000
 DEFAULT_RELOC_ppc32 := 0x002d0000
 DEFAULT_RELOC_sparc := 0x00800000
+DEFAULT_RELOC_mips  := 0x00200000
 RELOC_PHYS          := y
 LDFLAGS              = -nostdlib -static -Bstatic
 EXTRA_GENERAL_D_DEP += .redo-change-tracker $(BID_RAM_BASE_DEP) \
@@ -80,8 +81,8 @@ BOOTSTRAP_ELF_NAME           ?= bootstrap.elf
 MKIMAGE                      ?= mkimage
 BOOTSTRAP_UIMAGE_COMPRESSION ?= none
 
-ifeq ($(BUILD_ARCH),$(filter $(BUILD_ARCH),arm ppc32 sparc))
-  # ARM/PPC/SPARC always uses single image mode
+ifeq ($(BUILD_ARCH),$(filter $(BUILD_ARCH),arm ppc32 sparc mips))
+  # ARM/PPC/SPARC/MIPS always uses single image mode
   # when no entry is given we build the useless auto-build target
   ifeq ($(E)$(ENTRY),)
     BOOTSTRAP_ELF_NAME := bootstrap.auto-build-useless.elf
@@ -122,6 +123,7 @@ SRC_CC_arm     	+= ARCH-arm/reboot.cc ARCH-arm/head.cc
 SRC_CC_ppc32    += ARCH-ppc32/init_kip_v2-arch.cc \
 		   ARCH-ppc32/reboot.cc ARCH-ppc32/head.cc
 SRC_CC_sparc	+= ARCH-sparc/reboot.cc ARCH-sparc/head.cc
+SRC_CC_mips	+= ARCH-mips/reboot.cc ARCH-mips/head.cc
 SRC_CC          += $(SUPPORT_CC_$(ARCH)-$(PLATFORM_TYPE))
 
 SRC_S-$(INTERNAL_CRT0) += ARCH-$(ARCH)/crt0.S
@@ -150,7 +152,8 @@ endif
 
 BOOTSTRAP_L4_LIBS := -lcxx_base -lcxx_io -luc_c_minimal
 DRV_LIBS-ppc32   = -ldrivers_of
-DRV_LIBS         = -ldrivers_uart $(DRV_LIBS-$(ARCH))
+DRV_LIBS         = -ldrivers_uart $(DRV_LIBS-$(ARCH)) $(DRV_LIBS_$(ARCH)-$(PLATFORM_TYPE))
+REQUIRES_LIBS   += $(REQUIRES_LIBS_$(ARCH)-$(PLATFORM_TYPE))
 ifeq ($(INTERNAL_CRT0),y)
 CRT0		 =
 endif
@@ -195,6 +198,11 @@ ifeq ($(ARCH),sparc)
 LOADER_MBI	 := 1
 endif
 
+ifeq ($(ARCH),mips)
+LOADER_MBI	 := 1
+CPPFLAGS         += -DSINGLE_SECTION
+endif
+
 
 # convenience
 ifneq ($(E),)
@@ -211,6 +219,7 @@ ifneq ($(ENTRY),)
                     MAKE_INC_FILE=$(PWD)/mod.make.inc \
                     OUTPUT_DIR="$(BOOTSTRAP_OUTPUT_DIR)" \
                     OPT_ARCH=$(ARCH) OPT_COMPRESS=$(COMPRESS) L4DIR=$(L4DIR) \
+					CARCHFLAGS="$(CARCHFLAGS_$(ARCH))" \
                     $(SRC_DIR)/build.pl $(1) $(BOOTSTRAP_MODULES_LIST) "$(ENTRY)" || \
                     (echo "processing-of-module-list-failed"; exit 1))
  endif
@@ -239,6 +248,12 @@ endif
 
 $(od)bootstrap_$(ENTRY_FN): $(od)$(BOOTSTRAP_LINK_SOURCE)
 	$(VERBOSE)$(LN) -f $< $@
+
+ifeq ($(ARCH),$(filter $(ARCH),mips))
+	# move bootloader entry point to KSEG0 to allow bootstrap code to run
+	@echo -e "  MIPS ==> Post-processing: --adjust-vma 0x80000000, $@"
+	@$(OBJCOPY) --adjust-vma 0x80000000 $@
+endif
 
 $(od)bootstrap_$(ENTRY_FN).elf: $(od)$(BOOTSTRAP_LINK_SOURCE)
 	$(VERBOSE)$(LN) -f $< $@

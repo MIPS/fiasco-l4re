@@ -1,0 +1,16 @@
+# vim:set ft=make:
+
+INTERFACES_KERNEL       += intervm
+
+RAM_PHYS_BASE           := 0x0
+PREPROCESS_PARTS        += karma libkarma libuart
+config_IMPL             += config-mips32-karma
+pic_IMPL                += pic-mips32-karma
+clock_IMPL              += clock-generic
+SUBSYSTEMS              += LIBKARMA LIBUART
+OBJECTS_LIBKARMA        += hypercall.o
+OBJECTS_LIBUART         += uart_karma.o
+uart_IMPL               += uart-mips32-karma uart-mmio-mips32-karma
+kernel_uart_IMPL        += kernel_uart-mips32-karma
+timer_IMPL              += timer-mips32-karma
+cp0_status_IMPL         += cp0_status-karma

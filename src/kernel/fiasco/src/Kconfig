@@ -33,10 +33,17 @@ config AMD64
 
 config ARM
 	bool "ARM processor family"
-	
+
+config MIPS32
+	bool "MIPS32 processor family"
+	select CONTEXT_16K
+	select PAGE_SIZE_16KB
+	# select CONTEXT_4K
+	# select PAGE_SIZE_4KB
+
 config PPC32
 	bool "PowerPC 32 processor family (Caution: INCOMPLETE!)"
-	depends on EXPERIMENTAL && INCLUDE_PPC32
+	depends on INCLUDE_PPC32
 	help
 	  PPC32 testing version, mainly for MPC5200 (603e). Currently,
 	  there is no support whatsoever.
@@ -64,6 +71,7 @@ choice
 	default PF_PC         if AMD64
 	default PF_MP52CXX    if PPC32
 	default PF_LEON3      if SPARC
+	default PF_MALTA      if MIPS32
 
 config PF_PC
 	bool "PC platform"
@@ -126,6 +134,32 @@ config CAN_ARM_CPU_CORTEX_A15
 config CAN_ARM_CACHE_L2CXX0
 	bool
 
+config PF_MIPS_MP_CAPABLE
+	bool
+	default y if CAN_MIPS_CPU_MP
+
+config CAN_MIPS_VZ_ASE
+	bool
+
+config CAN_MIPS_CPU_MP
+	bool
+
+config SYS_HAS_CPU_MIPS32_R2
+	bool
+
+# setup MIPS defines expected in various linux header files
+config CPU_MIPS32_R2
+	bool
+	default y if SYS_HAS_CPU_MIPS32_R2
+
+config CPU_MIPS32
+	bool
+	default y if CPU_MIPS32_R2
+
+config CPU_MIPSR2
+	bool
+	default y if CPU_MIPS32_R2
+
 choice
 	prompt "CPU"
 	default IA32_686   if IA32
@@ -133,6 +167,7 @@ choice
 	default AMD64_K8   if AMD64
 	default PPC32_603e if PPC32
 	default LEON3      if SPARC
+	default MIPS32_R2  if MIPS32
 
 config ARM_PXA
 	bool "Intel XScale"
@@ -309,7 +344,29 @@ config LEON3
 	depends on SPARC
 	help
 	  Choose this if you have a LEON3 CPU.
+
+config MIPS32_R2
+	bool "MIPS32 Release 2"
+	depends on MIPS32
+	help
+	  Choose this if you have a MIPS32 Release 2 CPU.
+
 endchoice
+
+config MIPS_VZ
+	bool "Enable MIPS virtualization extension"
+	depends on MIPS32
+	depends on CAN_MIPS_VZ_ASE
+	help
+	  This feature allows you to run a virtual machine monitor (VMM) on top
+	  of Fiasco.
+
+config CPU_FREQUENCY
+	int "CPU frequency (MHz)"
+	depends on MIPS32
+        default 200
+	help
+	  Set the CPU frequency to match the platform's cpu frequency for proper time keeping.
 
 config CPU_VIRT
 	bool "Virtualization"
@@ -461,8 +518,8 @@ config REGPARM3
 	  passes the first three arguments of a function call in registers.
 
 config FPU
-	bool "Enable FPU co-processor" if !CPU_VIRT
-	depends on ARM
+	bool "Enable FPU co-processor"
+	depends on (ARM && !CPU_VIRT) || MIPS32
 	default y
 	help
 	  Enable this if your platform has hardware floating point support.
@@ -485,7 +542,7 @@ menu "Kernel options"
 
 config MP
 	bool "Enable multi processor support"
-	depends on (PF_PC || PF_ARM_MP_CAPABLE) && !PF_UX
+	depends on (PF_PC || PF_ARM_MP_CAPABLE || PF_MIPS_MP_CAPABLE) && !PF_UX
 	help
 	  Enable support for machines with multiple processors.
 
@@ -513,11 +570,23 @@ config CONTEXT_8K
 	  when you know what you're doing.
 
 config CONTEXT_4K
+        depends on !CONTEXT_16K
 	bool #"TCB size of 4k"
 	default y if !CONTEXT_8K
 	help
 	  Use this option to use 4K kernel stacks. Only disable this option
 	  when you know what you're doing.
+
+config CONTEXT_16K
+	bool "TCB size of 16k"
+	default n
+	help
+	  Use this option to use 16K kernel stacks.
+
+config PAGE_SIZE_16KB
+	bool
+	default n
+	depends on MIPS32
 
 config SLOW_RTC
 	bool "Use RTC with 100 ticks per second"
@@ -592,7 +661,7 @@ endchoice
 
 config DISABLE_VIRT_OBJ_SPACE
 	bool "No virtually mapped array for cap tables"
-	depends on (PF_PC || (ARM && !CPU_VIRT)) &&  EXPERIMENTAL
+	depends on (PF_PC || (ARM && !CPU_VIRT) || MIPS32) &&  EXPERIMENTAL
 
 config VIRT_OBJ_SPACE
 	def_bool y
@@ -685,7 +754,7 @@ config WATCHDOG
 
 config SERIAL
 	bool "Support for debugging over serial line"
-	depends on PF_PC || ARM || PPC32 || SPARC
+	depends on PF_PC || ARM || PPC32 || SPARC || MIPS32
 	default y
 	help
 	  This option enables support for input/output over serial interface.
@@ -831,7 +900,7 @@ config PERF_CNT
 	def_bool y if JDB && (IA32 || AMD64 || ARM)
 
 config BIT32
-	def_bool y if ARM || IA32 || PPC32 || SPARC
+	def_bool y if ARM || IA32 || PPC32 || SPARC || MIPS32
 
 config BIT64
 	def_bool y if AMD64
@@ -860,6 +929,7 @@ config XARCH
 	default "ia32" if IA32 && PF_PC
 	default "ppc32" if PPC32
 	default "sparc" if SPARC
+	default "mips32" if MIPS32
 
 config IA32_TARGET
 	string

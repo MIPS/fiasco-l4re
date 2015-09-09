@@ -1,4 +1,4 @@
-INTERFACE [debug]:
+INTERFACE [mips32,debug]:
 
 EXTENSION class Kip
 {
@@ -6,7 +6,7 @@ private:
   void debug_print_syscalls() const;
 };
 
-IMPLEMENTATION [debug]:
+IMPLEMENTATION [mips32,debug]:
 
 
 #include <cstdio>
@@ -35,7 +35,7 @@ PUBLIC
 void 
 Mem_desc::dump() const
 {
-  printf("%s [%016lx-%016lx] %s", is_virtual()?"virt":"phys",
+  printf("%s [%016lx-%016lx] %s\n", is_virtual()?"virt":"phys",
       start(), end() + 1, memory_desc_types[type()]);
 }
 

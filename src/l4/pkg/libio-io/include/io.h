@@ -238,6 +238,12 @@ L4_CV int L4_EXPORT
 l4io_has_resource(enum l4io_resource_types_t type,
                   l4vbus_paddr_t start, l4vbus_paddr_t end);
 
+/**
+ * \brief Dump all resources.
+ */
+L4_CV void L4_EXPORT
+l4io_dump_vbus(void);
+
 /* ------------------------------------------------------- */
 /* Implementations */
 

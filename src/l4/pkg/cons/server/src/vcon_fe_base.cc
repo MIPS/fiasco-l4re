@@ -48,6 +48,7 @@ Vcon_fe_base::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
   switch (tag.label())
     {
     case 0:
+    case -1:
         {
           char buf[30];
           const int sz = sizeof(buf);

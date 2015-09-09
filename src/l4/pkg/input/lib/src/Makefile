@@ -26,5 +26,6 @@ SRC_C_amd64-l4f += $(SRCALL) input/serio/i8042.c input/misc/pcspkr.c
 SRC_C_arm-l4f   += $(SRCALL) input/serio/ambakmi.c
 SRC_C_ppc32-l4f += $(SRCALL)
 SRC_C_sparc-l4f += $(SRCALL)
+SRC_C_mips-l4f  += $(SRCALL) input/serio/i8042.c
 
 include $(L4DIR)/mk/lib.mk

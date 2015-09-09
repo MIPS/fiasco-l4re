@@ -1,0 +1,14 @@
+# -*- makefile -*-
+# vi:se ft=make:
+
+SYSTEM_TARGET             ?= mips-mti-linux-gnu-
+LD_EMULATION_CHOICE       := elf32ltsmip
+SHARED_FLAGS              += -mips32r2 -EL -msoft-float
+LDFLAGS                   += -mips32r2 -EL 
+#OPT_CFLAGS                := -g
+#OPT_CXXFLAGS              := -g
+#OPT_CXXFLAGS-gcc          := -g
+#OPT_CFLAGS-gcc            := -g
+#OPT_SHARED_FLAGS-gcc      := -g
+#OPT_SHARED_FLAGS-gcc      := -g
+

@@ -4,10 +4,12 @@ L4DIR           ?= $(PKGDIR)/../..
 TARGET          = fb-drv
 SRC_CC_x86      = vesa.cc
 SRC_CC_amd64    = vesa.cc
+SRC_CC_mips     = fbdrv.cc
 SRC_CC_arm      = lcddrv.cc
 SRC_CC          = main.cc dummy.cc splash.cc $(SRC_CC_$(ARCH))
 REQUIRES_LIBS_x86   = x86emu_int10 libio
 REQUIRES_LIBS_amd64 = x86emu_int10 libio
+REQUIRES_LIBS_mips  = libdrivers-fb
 REQUIRES_LIBS_arm   = libdrivers-lcd
 REQUIRES_LIBS       = libc_support_misc $(REQUIRES_LIBS_$(ARCH))
 

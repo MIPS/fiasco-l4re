@@ -20,6 +20,11 @@ endef
 SRC_libc/sysdeps/linux_arm += aeabi_atexit
 SRC_libc/sysdeps/linux_arm += find_exidx
 
+# KYMA add missing files from
+# ./uclibc/lib/contrib/uclibc/libc/sysdeps/linux/mips/Makefile.arch
+SRC_libc/sysdeps/linux_mips += setjmp_aux
+SRC_libc/sysdeps/linux_mips += _test_and_set
+
 define SRC_libc/sysdeps/linux_sparc__with_soft_fp
   soft-fp/q_add
   soft-fp/q_cmp

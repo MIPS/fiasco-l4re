@@ -184,10 +184,10 @@ namespace {
   {
     enum
     {
-      Meta_align_bits = 10,
+      Log2_sizeof_32bitlong = 2, // meta_size is over-estimated on 64bit system
+      Meta_align_bits = L4_PAGESHIFT - Log2_sizeof_32bitlong,
       Meta_align      = 1UL << Meta_align_bits,
-
-      Page_shift      = 12,
+      Page_shift      = L4_PAGESHIFT,
     };
 
   public:
@@ -210,10 +210,10 @@ namespace {
     }
 
     Page &page(unsigned long offs) const throw()
-    { return (Page &)(pages[offs >> 12]); }
+    { return (Page &)(pages[offs >> Page_shift]); }
 
     Page &alloc_page(unsigned long offs) const throw()
-    { return (Page &)(pages[offs >> 12]); }
+    { return (Page &)(pages[offs >> Page_shift]); }
 
   };
 
@@ -228,36 +228,46 @@ namespace {
     { return meta2_size()/sizeof(unsigned long); }
 
   private:
+    enum {
+      Log2_sizeof_32bitlong = 2, // meta1_size is over-estimated on 64bit system
+      L1_align_bits      = L4_PAGESHIFT - Log2_sizeof_32bitlong,
+      L1_page_align      = 1UL << L1_align_bits,
+      L2_page_shift      = L4_PAGESHIFT,
+      L2_page_align      = 1UL << L2_page_shift,
+      L2_mask_lobits     = L2_page_align - 1,
+      L2_mask_hibits     = ~L2_mask_lobits,
+    };
+
     class L1
     {
     private:
       unsigned long p;
 
     public:
-      Page *l2() const throw() { return (Page*)(p & ~0xfffUL); }
+      Page *l2() const throw() { return (Page*)(p & L2_mask_hibits); }
       Page &operator [] (unsigned long offs) throw()
-      { return l2()[(offs >> 12) & (entries2()-1)]; }
+      { return l2()[(offs >> L2_page_shift) & (entries2()-1)]; }
       Page *operator * () const throw() { return l2(); }
-      unsigned long cnt() const throw() { return p & 0xfffUL; }
-      void inc() throw() { p = (p & ~0xfffUL) | (((p & 0xfffUL)+1) & 0xfffUL); }
-      void dec() throw() { p = (p & ~0xfffUL) | (((p & 0xfffUL)-1) & 0xfffUL); }
+      unsigned long cnt() const throw() { return p & L2_mask_lobits; }
+      void inc() throw() { p = (p & L2_mask_hibits) | ((p+1) & L2_mask_lobits); }
+      void dec() throw() { p = (p & L2_mask_hibits) | ((p-1) & L2_mask_lobits); }
       void set(void* _p) throw() { p = (unsigned long)_p; }
     };
 
     L1 &__p(unsigned long offs) const throw()
-    { return ((L1*)pages)[(offs >> 12) / entries2()]; }
-
-  public:
+    { return ((L1*)pages)[(offs >> L2_page_shift) / entries2()]; }
+    
+  public:   
     unsigned long entries1() const throw()
     { return (num_pages() + entries2() - 1)/entries2(); }
 
     long meta1_size() const throw()
-    { return (entries1() * sizeof(unsigned long) + 1023) & ~1023; }
+    { return (l4_round_size(entries1() * sizeof(unsigned long), L1_align_bits)); }
 
     Mem_big(unsigned long size, unsigned long flags)
     : Moe::Dataspace_noncont(size, flags)
     {
-      pages = (unsigned long*)Page_alloc::_alloc(quota(), meta1_size(), 1024);
+      pages = (unsigned long*)Page_alloc::_alloc(quota(), meta1_size(), L1_page_align);
       memset(pages, 0, meta1_size());
     }
 
@@ -268,7 +278,7 @@ namespace {
           free_page(page(i));
         }
 
-      for (unsigned long i = 0; i < size(); i+=page_size()*1024)
+      for (unsigned long i = 0; i < size(); i+=page_size()*L1_page_align)
         {
           L1 &p = __p(i); 
 

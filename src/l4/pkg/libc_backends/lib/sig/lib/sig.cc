@@ -14,6 +14,9 @@
 #include <l4/re/debug>
 #include <l4/util/util.h>
 #include <l4/libc_backends/sig.h>
+#if defined(ARCH_mips)
+#include <l4/sys/utcb.h> // for L4_trap_code_mask, L4_trigger_exception
+#endif
 
 #include <sys/time.h>
 
@@ -115,6 +118,10 @@ asm(
 "trap                            \n\t"
 #elif defined(ARCH_sparc)
 "ta 0x1                          \n\t"
+#elif defined(ARCH_mips)
+// KYMAXXX revisit libc_be_sig_return_trap
+#warning KYMAXXX Implement libc_be_sig_return_trap for mips.
+"break                           \n\t"
 #else
 #error Unsupported arch!
 #endif
@@ -156,6 +163,14 @@ static bool setup_sig_frame(l4_exc_regs_t *u, int signum)
   u->r[1] = 0; // siginfo_t pointer, we do not have one right currently
   u->r[2] = (l4_umword_t)ucf;
   u->ulr  = (unsigned long)libc_be_sig_return_trap;
+#elif defined(ARCH_mips)
+#warning KYMAXXX Implement setup_sig_frame for mips.
+  asm volatile ("break \n\t");
+  u->sp = (l4_umword_t)ucf;
+  u->r[0] = signum;
+  u->r[1] = 0; // siginfo_t pointer, we do not have one right currently
+  u->r[2] = (l4_umword_t)ucf;
+  u->epc  = (unsigned long)libc_be_sig_return_trap;
 #else
   u->sp = (l4_umword_t)ucf - sizeof(void *);
   *(l4_umword_t *)u->sp = (l4_umword_t)ucf;
@@ -184,12 +199,14 @@ int Sig_handling::handle_exception(l4_umword_t, L4::Ipc::Iostream &ios)
 
   *u = *l4_utcb_exc();
 
-#ifdef ARCH_arm
+#if defined(ARCH_arm) || defined(ARCH_mips)
   pc_delta = -4;
 #endif
 
 #ifdef ARCH_arm
   if ((u->err >> 26) == 0x3e)
+#elif defined(ARCH_mips)
+  if ((u->err & L4_trap_code_mask) == L4_trigger_exception)
 #elif defined(ARCH_ppc32)
   if ((u->err & 3) == 4)
 #else
@@ -225,7 +242,7 @@ int Sig_handling::handle_exception(l4_umword_t, L4::Ipc::Iostream &ios)
       // sig-return
       //printf("Sigreturn\n");
 
-#ifdef ARCH_arm
+#if defined(ARCH_arm) || defined(ARCH_mips)
       ucontext_t *ucf = (ucontext_t *)u->sp;
 #else
       ucontext_t *ucf = (ucontext_t *)(u->sp + sizeof(l4_umword_t) * 3);

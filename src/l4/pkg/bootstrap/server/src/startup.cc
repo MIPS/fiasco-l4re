@@ -169,7 +169,7 @@ L4_kernel_options::Options *find_kopts(void *kip)
   unsigned long a = (unsigned long)kip + sizeof(l4_kernel_info_t);
 
   // kernel-option directly follow the KIP page
-  a = (a + 4096 - 1) & ~0xfff;
+  a = (a + L4_PAGESIZE - 1) & L4_PAGEMASK;
 
   L4_kernel_options::Options *ko = (L4_kernel_options::Options *)a;
 
@@ -376,16 +376,11 @@ static void fill_mem(unsigned fill_value)
           if (reg->begin() > r->end())
             break;
 
-          if (reg->begin() <= r->begin())
+          if (reg->begin() <= b)
             b = reg->end() + 1;
-          else if (b > reg->begin()) // some overlapping
-            {
-              if (reg->end() + 1 > b)
-                b = reg->end() + 1;
-            }
           else
             {
-              do_the_memset(b, fill_value, reg->begin() - 1 - b + 1);
+              do_the_memset(b, fill_value, reg->begin() - b);
               b = reg->end() + 1;
             }
         }
@@ -552,6 +547,11 @@ load_elf_module(Boot_modules::Module const &mod, char const *n)
   return load_elf_module(mod);
 }
 
+#if defined(ARCH_mips)
+extern "C" 
+  void syncICache(unsigned long start, unsigned long size);
+#endif
+
 /**
  * \brief  Startup, started from crt0.S
  */
@@ -704,6 +704,18 @@ startup(char const *cmdline)
       panic("cannot boot a kernel with unknown api version %lx\n", api_version);
       break;
     }
+
+#if defined(ARCH_mips)
+  l4_kernel_info_t *_l4i = (l4_kernel_info_t *)l4i;
+  strncpy(_l4i->platform_info.name, Platform_base::platform->get_platform_name(), 16);
+  printf("  Platform name : %s\n", _l4i->platform_info.name);
+  printf("  Flushing caches ...\n");
+  for (Region *i = ram.begin(); i < ram.end(); ++i) {
+    printf("  [%08lx, %08lx)\n", (unsigned long)i->begin(), (unsigned long)i->size());
+    syncICache((unsigned long)i->begin(), (unsigned long)i->size());
+  }
+  printf("  done\n");
+#endif
 
   printf("  Starting kernel ");
   print_module_name(L4_CONST_CHAR_PTR(mb_mod[kernel_module].cmdline),

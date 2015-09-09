@@ -2,6 +2,8 @@
  * (c) 2010 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
  *          Alexander Warg <warg@os.inf.tu-dresden.de>
  *     economic rights: Technische Universität Dresden (Germany)
+ * Copyright (C) 2014 Imagination Technologies Ltd.
+ * Author: Yann Le Du <ledu@kymasys.com>
  *
  * This file is part of TUD:OS and distributed under the terms of the
  * GNU General Public License 2.
@@ -368,6 +370,24 @@ Dev::restore_decoders(unsigned cmd)
   cfg_write(Config::Command, cmd, Cfg_short);
 }
 
+void
+Dev::enable_pci_memory()
+{
+  l4_uint32_t cmd = 0;
+  cfg_read(Config::Command, &cmd, Hw::Pci::Cfg_byte);
+  cmd |= CC_mem;
+  cfg_write(Config::Command, cmd, Hw::Pci::Cfg_byte);
+}
+
+void
+Dev::enable_pci_io()
+{
+  l4_uint32_t cmd = 0;
+  cfg_read(Config::Command, &cmd, Hw::Pci::Cfg_byte);
+  cmd |= CC_io;
+  cfg_write(Config::Command, cmd, Hw::Pci::Cfg_byte);
+}
+
 int
 Dev::discover_bar(int bar)
 {
@@ -387,6 +407,12 @@ Dev::discover_bar(int bar)
   if (!x)
     return bar + 1;
 
+#if defined(ARCH_mips)
+  // ignore resource if only prefetch bit is set and size is zero
+  if (!(x & ~0x8))
+    return bar + 1;
+#endif
+
   unsigned io_flags = (cmd & CC_io) ? 0 : Resource::F_disabled;
   unsigned mem_flags = (cmd & CC_mem) ? 0 : Resource::F_disabled;
 
@@ -403,7 +429,10 @@ Dev::discover_bar(int bar)
   Resource *res = 0;
   if (!(x & 1))
     {
-      //printf("%08x: BAR[%d] mmio ... %x\n", adr(), bar, x );
+#if EXTRA_VERBOSE_DEBUG
+      printf("%08x: BAR[%d] mmio ... %x\n", host()->adr(), bar, x );
+#endif
+
       res = new Resource(mem_flags);
       // set ID to 'BARx', x == bar
       res->set_id(0x00524142 + (((l4_uint32_t)('0' + bar)) << 24));
@@ -438,7 +467,9 @@ Dev::discover_bar(int bar)
 
       res->start_size(a, size);
 
-      // printf("%08x: BAR[%d] mem ...\n", adr(), bar*4 + 10 );
+#if EXTRA_VERBOSE_DEBUG
+      printf("%08x: BAR[%d] mem ... a %08llx sz %08llx\n", host()->adr(), bar, a, size );
+#endif
       _bars[bar - res->is_64bit()] = res;
       if (res->is_64bit())
 	_bars[bar] = (Resource*)1;
@@ -446,7 +477,9 @@ Dev::discover_bar(int bar)
     }
   else
     {
-      // printf("%08x: BAR[%d] io ...\n", adr(), bar );
+#if EXTRA_VERBOSE_DEBUG
+      printf("%08x: BAR[%d] io ...\n", host()->adr(), bar );
+#endif
       int s;
       for (s = 2; s < 32; ++s)
 	if ((x >> s) & 1)
@@ -463,6 +496,65 @@ Dev::discover_bar(int bar)
   res->validate();
   _host->add_resource_rq(res);
   return bar + 1;
+}
+
+void
+Dev::quirk_malta_gt64xx(int *num_bars)
+{
+  // Malta board's Marvell GT64xx system controller
+  if (!(vendor() == 0x11ab && device() == 0x4620))
+    return;
+
+  // Ignore bar registers; do not assign pci resources to them
+  *num_bars = 0;
+  return;
+}
+
+#define PCI_VENDOR_ID_AMD               0x1022
+#define PCI_DEVICE_ID_AMD_LANCE         0x2000
+
+void
+Dev::quirk_malta_fixup_irqs()
+{
+  if (!(vendor() == PCI_VENDOR_ID_AMD && device() == PCI_DEVICE_ID_AMD_LANCE))
+    return;
+
+  // Hardcode NIC to irq line 10 according to mips malta board documentation
+  // (this is usually obtained from piix probe and fixup).
+  l4_uint8_t irq_line = 10;
+
+  Resource * r = new Resource(Resource::Irq_res | Resource::F_relative
+                              | Resource::F_hierarchical,
+                              irq_line, irq_line);
+  r->dump(0);
+  _host->add_resource(r);
+
+  // bypass regular irq_pin/Irq_res creation in calling function
+  irq_pin = 0;
+
+  return;
+}
+
+void
+Dev::setup_hid_from_cls()
+{
+  const char* hid;
+
+  if (!_host->hid())
+    return;
+
+  switch (cls_rev >> 24) {
+    case 0x01: hid = "PCI/CC_01"; break; // storage
+    case 0x02: hid = "PCI/CC_02"; break; // network
+    case 0x03: hid = "PCI/CC_03"; break; // display
+    case 0x04: hid = "PCI/CC_04"; break; // media
+    case 0x06: hid = "PCI/CC_06"; break; // bridge
+    case 0x07: hid = "PCI/CC_07"; break; // com
+    case 0x0c: hid = "PCI/CC_0c"; break; // usb
+    case 0x0d: hid = "PCI/CC_0d"; break; // wlan
+    default: hid = ""; break;
+  }
+  _host->set_hid(hid);
 }
 
 void
@@ -551,12 +643,18 @@ void
 Dev::discover_resources(Hw::Device *host)
 {
 
-  // printf("survey ... %x.%x\n", dynamic_cast<Hw::Pci::Bus*>(parent())->num, adr());
+#if EXTRA_VERBOSE_DEBUG
+  printf("survey ... %x.%x\n", dynamic_cast<Pci_bridge*>(host->parent())->num, host->adr());
+#endif
   l4_uint32_t v;
   cfg_read(Config::Subsys_vendor, &v, Cfg_long);
   subsys_ids = v;
   cfg_read(Config::Irq_pin, &v, Cfg_byte);
   irq_pin = v;
+
+#if defined(ARCH_mips)
+  quirk_malta_fixup_irqs();
+#endif
 
   if (irq_pin)
     {
@@ -575,6 +673,10 @@ Dev::discover_resources(Hw::Device *host)
 
   int bars = ((hdr_type & 0x7f) == 0) ? 6 : 2;
 
+#if defined(ARCH_mips)
+  quirk_malta_gt64xx(&bars);
+#endif
+
   for (int bar = 0; bar < bars;)
     bar = discover_bar(bar);
 
@@ -588,6 +690,10 @@ Dev::discover_resources(Hw::Device *host)
 void
 Dev::setup(Hw::Device *)
 {
+#if defined(ARCH_mips)
+  setup_hid_from_cls();
+#endif
+
   for (unsigned i = 0; i < sizeof(_bars)/sizeof(_bars[0]); ++i)
     {
       Resource *r = bar(i);
@@ -614,8 +720,34 @@ Dev::setup(Hw::Device *)
       if (l4_uint32_t(v & ~0x7f) != l4_uint32_t(s & 0xffffffff))
 	d_printf(DBG_ERR, "ERROR: could not set PCI BAR %d\n", i);
 
-      // printf("%08x: set BAR[%d] to %08x\n", adr(), i, v);
+#if EXTRA_VERBOSE_DEBUG
+      printf("%08x: set BAR[%d] to %08x\n", host()->adr(), i, v);
+#endif
     }
+#if defined(ARCH_mips)
+  // Malta IAsim simulator platform does not support disable_decoders /
+  // restore_decoders sequence for all PCI devices it emulates therefore only
+  // enable PCI devices as the final setup_resources step.
+
+  // Enable PCI resources to ensure they are visible to vbus interface
+  for (unsigned i = 0; i < sizeof(_bars)/sizeof(_bars[0]); ++i)
+    {
+      Resource *r = bar(i);
+      if (!r || r->empty())
+	continue;
+
+      if (r->type() == Resource::Io_res) {
+        enable_pci_io();
+        r->enable();
+        d_printf(DBG_INFO, "%08x: enabling BAR[%d]\n", host()->adr(), i);
+      }
+      if (r->type() == Resource::Mmio_res) {
+        enable_pci_memory();
+        r->enable();
+        d_printf(DBG_INFO, "%08x: enabling BAR[%d]\n", host()->adr(), i);
+      }
+    }
+#endif
 }
 
 void
@@ -722,10 +854,14 @@ Pci_pci_bridge::setup_children(Hw::Device *)
       l4_uint32_t v = (mmio->start() >> 16) & 0xfff0;
       v |= mmio->end() & 0xfff00000;
       cfg_write(0x20, v, Cfg_long);
-      // printf("%08x: set mmio to %08x\n", adr(), v);
+#if 0
+      printf("%08x: set mmio to %08x\n", host->adr(), v);
+#endif
       l4_uint32_t r;
       cfg_read(0x20, &r, Cfg_long);
-      // printf("%08x: mmio =      %08x\n", adr(), r);
+#if 0
+      printf("%08x: mmio =      %08x\n", host->adr(), r);
+#endif
       cfg_read(0x04, &r, Cfg_short);
       r |= 3;
       cfg_write(0x4, r, Cfg_short);
@@ -736,7 +872,9 @@ Pci_pci_bridge::setup_children(Hw::Device *)
       l4_uint32_t v = (pref_mmio->start() >> 16) & 0xfff0;
       v |= pref_mmio->end() & 0xfff00000;
       cfg_write(0x24, v, Cfg_long);
-      // printf("%08x: set pref mmio to %08x\n", adr(), v);
+#if 0
+      printf("%08x: set pref mmio to %08x\n", host->adr(), v);
+#endif
     }
 }
 
@@ -760,7 +898,9 @@ Pci_pci_bridge::discover_resources(Hw::Device *host)
   else
     r->set_empty();
 
-  // printf("%08x: mmio = %08x\n", adr(), v);
+#if 0
+  printf("%08x: mmio = %08x\n", host->adr(), v);
+#endif
   mmio = r;
   mmio->validate();
   _host->add_resource_rq(mmio);

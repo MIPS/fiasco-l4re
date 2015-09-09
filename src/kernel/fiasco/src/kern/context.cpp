@@ -2508,6 +2508,9 @@ Context::spill_fpu()
 }
 
 
+//----------------------------------------------------------------------------
+IMPLEMENTATION [fpu && !ux && !mips32]:
+
 /**
  * When switching away from the FPU owner, disable the FPU to cause
  * the next FPU access to trap.
@@ -2523,6 +2526,32 @@ Context::switch_fpu(Context *t)
     f.disable();
   else if (f.is_owner(t) && !(t->state() & Thread_vcpu_fpu_disabled))
     f.enable();
+}
+
+//----------------------------------------------------------------------------
+IMPLEMENTATION [fpu && !ux && mips32]:
+
+/**
+ * When switching away from the FPU owner, disable the FPU to cause
+ * the next FPU access to trap.
+ * When switching back to the FPU owner, enable the FPU so we don't
+ * get an FPU trap on FPU access.
+ */
+IMPLEMENT inline NEEDS ["fpu.h"]
+void
+Context::switch_fpu(Context *t)
+{
+  Fpu &f = Fpu::fpu.current();
+
+  if (Fpu::fpu_debug())
+    printf("###SWI fpu owner %p, this %p => t %p %s\n", f.owner(), this, t, Cpu::vz_str());
+
+  if (f.is_owner(this))
+    f.disable();
+  else if (f.is_owner(t) && !(t->state() & Thread_vcpu_fpu_disabled))
+    f.enable();
+  else
+    assert_kdb(!Fpu::is_enabled());
 }
 
 //----------------------------------------------------------------------------

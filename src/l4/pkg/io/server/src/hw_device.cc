@@ -67,7 +67,7 @@ Device::setup_children()
 int
 Device::pm_init()
 {
-#if 0
+#if EXTRA_VERBOSE_DEBUG
   printf("Hw::Device::plug(this=%p, name='%s', hid='%s')\n",
          this, name(), hid());
 #endif
@@ -89,7 +89,7 @@ Device::pm_init()
 void
 Device::init()
 {
-#if 0
+#if EXTRA_VERBOSE_DEBUG
   printf("Hw::Device::plug(this=%p, name='%s', hid='%s')\n",
          this, name(), hid());
 #endif

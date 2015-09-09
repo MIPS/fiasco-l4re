@@ -32,24 +32,27 @@ IMPLEMENT inline NEEDS[<cstdio>,"kdb_ke.h","processor.h",
 int Thread::handle_page_fault(Address pfa, Mword error_code, Mword pc,
                               Return_frame *regs)
 {
-  //if (Config::Log_kernel_page_faults && !PF::is_usermode_error(error_code))
-  if (0 && current_cpu() != Cpu_number::boot_cpu())
+#if 0
+  if (1)
     {
       auto guard = lock_guard(cpu_lock);
-      printf("*KP[cpu=%u, sp=%lx, pfa=%lx, pc=%lx, error=(%lx)",
+      printf("%s: *PF[cpu=%u, sp=%lx, pfa=%lx, pc=%lx, error_code=(%lx), exc_code=",
+             PF::is_usermode_error(error_code) ? "U" : "K",
              cxx::int_value<Cpu_number>(current_cpu()),
              Proc::stack_pointer(), pfa, pc, error_code);
       print_page_fault_error(error_code);
       printf("]\n");
     }
+#endif
 
-#if 0
-  printf("Translation error ? %x\n"
-	 "  current space has mapping : %08x\n"
-	 "  Kernel space has mapping  : %08x\n",
-	 PF::is_translation_error(error_code),
-	 current_mem_space()->lookup((void*)pfa),
-	 Space::kernel_space()->lookup((void*)pfa));
+#if 0 // DEBUG
+  printf("Translation error ? %lx\n"
+         "  pfa                       : %08lx\n"
+	 "  current space has mapping : %08lx\n"
+	 "  Kernel space has mapping  : %08lx\n",
+	 PF::is_translation_error(error_code), pfa,
+	 Mem_space::current_mem_space(current_cpu())->virt_to_phys(pfa),
+	 Space::kernel_space()->virt_to_phys(pfa));
 #endif
 
 
@@ -80,7 +83,7 @@ int Thread::handle_page_fault(Address pfa, Mword error_code, Mword pc,
 
       // user mode page fault -- send pager request
       if (handle_page_fault_pager(_pager, pfa, error_code,
-                                  L4_msg_tag::Label_page_fault))
+                                  L4_msg_tag::Label_page_fault, pc))
         return 1;
 
       goto error;

@@ -13,6 +13,7 @@
 
 #include <l4/re/error_helper>
 #include <l4/re/env>
+#include <l4/sys/debugger>
 
 namespace Ned {
 
@@ -86,6 +87,7 @@ Server::Server() : Base(0)
   pthread_mutex_init(&_start_mutex, NULL);
   pthread_mutex_lock(&_start_mutex);
   chksys(pthread_create(&_th, NULL, &__run, this), "creating server thread");
+  l4_debugger_set_object_name(pthread_getl4cap(_th), "ned_server");
   pthread_mutex_lock(&_start_mutex);
   pthread_mutex_destroy(&_start_mutex);
 }

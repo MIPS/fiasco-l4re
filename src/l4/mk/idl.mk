@@ -134,6 +134,10 @@ ifeq ($(ARCH),arm)
 IDL_FLAGS	+= -Bparm
 endif
 
+ifeq ($(ARCH),mips)
+IDL_FLAGS	+= -Bpmips
+endif
+
 ifeq ($(ARCH),amd64)
 IDL_FLAGS	+= -Bpamd64
 endif

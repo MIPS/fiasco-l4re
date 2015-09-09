@@ -1,0 +1,251 @@
+HOWTO for building and running the MIPS port of Fiasco/L4Re.
+
+Updated Jun 2, 2015
+
+Setup toolchain
+===============
+
+ Building Fiasco/L4Re for MIPS arch has been tested to work with the following
+ freely available toolchains.
+
+ - Codescape GNU Tools 2015.01-5, MTI GNU Linux Toolchain
+   mips-mti-linux-gnu-gcc (Codescape GNU Tools 2015.01-5 for MIPS MTI Linux) 4.9.2
+   GNU ld (Codescape GNU Tools 2015.01-5 for MIPS MTI Linux) 2.24.90
+
+ - Sourcery CodeBench Lite 2012.03-63 for MIPS GNU/Linux.
+   mips-linux-gnu-gcc (Sourcery CodeBench Lite 2012.03-63) 4.6.3
+   GNU ld (Sourcery CodeBench Lite 2012.03-63) 2.21.53.20110905
+
+ Setup environment for MIPS cross-compile
+   export ARCH=mips
+   export PATH=/<path_to_toolchain>/bin:$PATH
+   export CROSS_COMPILE=mips-mti-linux-gnu-
+    or
+   export CROSS_COMPILE=mips-linux-gnu-
+
+ Also set SYSTEM_TARGET appropriately for the toolchain (see below for details).
+
+
+Setup source repository
+=======================
+
+ For this setup <local_branch> is an arbitrary name and can match the
+ <remote_branch> if desired.  <remote_branch> is one of:
+   mips-next     - newer mips fiasco port based on upstream svn r67
+   fiasco-mips32 - initial mips fiasco port based on upstream svn r54
+ 
+ Obtain fiasco.git and create a remote-tracking branch
+   cd <path_to_workdir>
+   git clone git://<path_to_repository>/fiasco.git fiasco.git
+   cd <path_to_workdir>/fiasco.git
+   git branch --track <local_branch> origin/<remote_branch>
+   git checkout <local_branch>
+ 
+ You should now have Fiasco and L4Re under fiasco.git:
+   fiasco.git/src/kernel/fiasco
+   fiasco.git/src/l4
+ 
+ You may also have Karma Linux. Karma is dealt with in a separate HOWTO.
+   fiasco.git/src/linux
+
+
+Specifying SYSTEM_TARGET for the toolchain when Building Fiasco/L4Re
+====================================================================
+
+ The SYSTEM_TARGET makefile variable must be set to match the toolchain if the
+ default value does not match. It can overridden on the make command line or
+ changed in src/kernel/fiasco/src/Makeconf.mips32 and src/l4/mk/Makeconf, but a
+ convenient method is to create a file Makeconf.local in the fiasco and l4 src
+ directories containing
+
+   SYSTEM_TARGET=mips-mti-linux-gnu-
+    or
+   SYSTEM_TARGET=mips-linux-gnu-
+
+ Create Makeconf.local (if necessary) before creating the initial Fiasco or L4Re
+ build directories.
+
+   cd fiasco.git
+   cat > src/kernel/fiasco/src/Makeconf.local << EOF
+   SYSTEM_TARGET=mips-mti-linux-gnu-
+   EOF
+
+   cat > src/l4/Makeconf.local << EOF
+   SYSTEM_TARGET=mips-mti-linux-gnu-
+   EOF
+
+
+Building the Fiasco Kernel the first time
+=========================================
+ 
+ Change to Fiasco directory containing top-level Makefile
+   cd src/kernel/fiasco
+
+ Create Fiasco build directory <build_fiasco> at top level (or elsewhere).  Make
+ sure that SYSTEM_TARGET is set appropriately for the toolchain at this point.
+
+   make BUILDDIR=../../../build/fiasco
+ 
+ Configure Fiasco from a default configuration template
+   cp src/templates/globalconfig.out.mips32-malta-vz <build_fiasco>/globalconfig.out
+ 
+ Build Fiasco. Optionally change features using menuconfig.
+   cd <build_fiasco>
+   make menuconfig
+   make -j2
+ 
+ The Fiasco executable and an unstripped version are:
+   <build_fiasco>/fiasco
+   <build_fiasco>/fiasco.image
+
+
+
+Building the L4 Runtime Environment the first time
+==================================================
+
+ Create L4Re build directory <build_l4>, images directory and configure L4Re.
+ Choose architecture and platform matching Fiasco kernel config.  Make sure that
+ SYSTEM_TARGET is set appropriately for the toolchain at this point.
+
+   cd src/l4
+   make B=../../build/l4
+   mkdir ../../build/l4/images
+ 
+ To change the configuration
+   cd <build_l4>
+   make config
+ 
+ Build L4Re.  Specify make -j for faster builds.
+   cd <build_l4>
+   make -j2
+
+ At this point all the L4Re components have been built and they are ready to be
+ used to create an executable image.
+
+ The Fiasco kernel obtains its boot information from the L4Re bootstrap module
+ in a data structure called the KIP (Kernel Info Page). The KIP specifies which
+ hw device to use for kernel logging, and the base and size of the platform RAM.
+ The default amount of memory available to Fiasco is set to PLATFORM_RAM_SIZE_MB
+ in src/l4/mk/platforms/<platform_type>.conf.
+
+
+
+Configuring L4 Images and Search Paths
+======================================
+
+ The configuration file to configure the contents of images and generally
+ the entries to boot is
+   src/l4/conf/modules.list
+
+ The search paths required to find the binaries and files are configured
+ through Makeconf.boot. Locations in the the L4 src-directory as well
+ as in the L4 build directories are checked. The locations searched are
+ src/l4/conf/Makeconf.boot and then <build_l4>/conf/Makeconf.boot.
+ Refer to src/l4/conf/Makeconf.boot.example for usage examples.
+
+ Modify src/l4/conf/Makeconf.boot as needed to provide paths to external
+ binaries or to correct existing paths, i.e. to the kernel build directory.
+
+ When building for different targets from the same tree it can be useful to
+ create separate build-<XXX> directories (this applies to both Fiasco and L4Re)
+ and use a Makeconf.boot file in the build-<XXX>/conf directory instead of the
+ one in src/l4/conf to customize and select the correct paths for each target.
+
+ For example create $(L4DIR_ABS)/../../build-<XXX>/l4/conf/Makeconf.boot
+ containing:
+
+   BOOTSTRAP_SEARCH_PATH := $(L4DIR_ABS)/../../build-<XXX>/fiasco
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/conf/examples
+   BOOTSTRAP_MODULES_LIST = $(L4DIR_ABS)/conf/modules.list
+
+
+
+Create a Bootstrap ELF Image
+============================
+
+ The Bootstrap ELF image contains Fiasco, L4Re and any other required modules.
+ Build the bootstrap image by specifying the entry point as defined in the
+ src/l4/conf/modules.list file, i.e. "entry hello" is specified as E=hello
+ 
+ For the MIPS VMM Demo, the entry point is E=vmmdemo-cfg. A corresponding
+ vmmdemo.cfg file can be found in the Makeconf.boot bootstrap path.
+
+ Create the object directory <build_l4>/images if required, and specify
+ E=<entry_point> to build an ELF executable.
+
+   cd <build_l4>
+   make E=hello S=bootstrap
+ OR
+   make E=vmmdemo-cfg S=bootstrap
+
+ The resulting binary and a few aliases are located under images. The
+ bootstrap.elf image always refers to the last built ELF image and is useful to
+ use in scripts.
+   images/bootstrap.elf
+   images/bootstrap_vmmdemo-cfg
+   images/bootstrap_vmmdemo-cfg.elf
+
+ To change the amount of memory available to Fiasco define CONFIG_RAM_SIZE_MB
+ when building bootstrap. Alternatively, edit PLATFORM_RAM_SIZE_MB in
+ src/l4/mk/platforms/<platform>.conf.
+
+   cd <build_l4>
+   make E=hello S=bootstrap CONFIG_RAM_SIZE_MB=128
+
+
+
+Rebuilding specific L4Re sub-projects
+=====================================
+
+ To rebuild specific sub-directories or projects, use S=<dir1>[,<dir2>,<dir3>].
+ This will not rebuild any other dependencies or the final bootstrap image so
+ use with caution and if in doubt don't specify S=.
+   make S=examples/mips,hello
+
+            **********************************************
+            * WARNING: using -j when building bootstrap  *
+            *          could result in bootstrap linking *
+            *          in out-of-date modules.           *
+            **********************************************
+
+ To rebuild the bootstrap image plus some specific sub-directories specify
+ E=<entry>.  Do not specify -j or else the concurrent build may finish building
+ bootstrap before the sub-directory modules have been rebuilt.
+   make E=vmmdemo-cfg S=examples/mips,bootstrap
+
+
+
+Loading and Running
+===================
+
+ # Running on IASim malta platform emulation
+ The images/bootstrap.elf binary can be loaded into the IASim malta platform.
+ 
+ # Running on SEAD-3 board
+ # Convert the resulting bootstrap.elf file to SREC format as required by YAMON
+ mips-linux-gnu-objcopy -O srec images/bootstrap.elf /tftpboot/vmmdemo.srec
+
+ # Load and then run the image
+ YAMON> load /tftpboot/vmmdemo.srec
+ YAMON> go
+
+
+
+Example directory layout
+========================
+
+ fiasco.git/
+ |-- build
+ |   |-- fiasco
+ |   `-- l4
+ |   |   |-- conf/Makeconf.boot (optional)
+ |   |   `-- images
+ |   `-- linux
+ `-- src
+     |-- kernel
+     |   `-- fiasco
+     `-- l4
+     |   |-- conf/Makeconf.boot
+     |   |-- conf/modules.list
+     |   `-- pkg
+     `-- linux

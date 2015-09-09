@@ -1,7 +1,7 @@
 PKGDIR		?= ../..
 L4DIR		?= $(PKGDIR)/../..
 
-DDE_SYSTEMS = x86 arm
+DDE_SYSTEMS = x86 arm mips
 
 TARGET		= ankh
 SRC_CC		= main.cc session.cc device.cc

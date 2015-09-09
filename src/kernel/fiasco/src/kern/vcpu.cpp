@@ -26,10 +26,17 @@ public:
   Trap_state _ts;
   Syscall_frame _ipc_regs;
 
+#if defined(__mips) // Kyma: avoid using uint16. synch with l4/pkg/l4sys/include/vcpu.h
+  Unsigned32 state;
+  Unsigned32 _saved_state;
+  Unsigned32 sticky_flags;
+  Unsigned32 _reserved;
+#else
   Unsigned16 state;
   Unsigned16 _saved_state;
   Unsigned16 sticky_flags;
   Unsigned16 _reserved;
+#endif
 
   L4_obj_ref user_task;
 

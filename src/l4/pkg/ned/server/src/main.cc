@@ -12,6 +12,7 @@
 #include <l4/libloader/elf>
 #include <l4/cxx/iostream>
 #include <l4/util/util.h>
+#include <l4/sys/debugger.h>
 #include <cstdio>
 
 #include "lua.h"
@@ -32,7 +33,7 @@ static
 int
 run(int argc, char const *const *argv)
 {
-  Dbg::set_level(Dbg::Warn);
+  Dbg::set_level(Dbg::Info);
   info.printf("Hello from Ned\n");
 
   boot_info.printf("cmdline: ");
@@ -72,6 +73,7 @@ main(int argc, char const *const *argv)
 {
   try
     {
+      l4_debugger_set_object_name(l4re_env()->main_thread, "ned_lua");
       return run(argc, argv);
     }
   catch (L4::Runtime_error &e)

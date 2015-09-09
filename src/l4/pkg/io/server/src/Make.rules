@@ -5,7 +5,8 @@ TARGET  = io
 SUBDIRS       = drivers
 
 SRC_CC_ACPI   = acpi.cc acpi_sci.cc acpi_osl.cc pci-acpi.cc
-SRC_CC_PCI    = pci.cc pci_iomem_root_bridge.cc msi.cc pm.cc
+SRC_CC_PCI    = pci.cc pci_iomem_root_bridge.cc msi.cc pm.cc \
+				pci_memport_root_bridge.cc
 
 SRC_CC := main.cc res.cc phys_space.cc resource.cc hw_device.cc \
           hw_root_bus.cc device.cc hw_irqs.cc \
@@ -38,6 +39,7 @@ DEFINES += -DSUPPORT_LEGACY_CFG
 
 SRC_CC_x86    = ux.cc $(addprefix acpi/,$(SRC_CC_ACPI))
 SRC_CC_amd64  = ux.cc $(addprefix acpi/,$(SRC_CC_ACPI))
+SRC_CC_mips   = pci/pci_memport_root_bridge.cc
 
 SRC_CC       += $(SRC_CC_$(ARCH))
 SRC_CC_IS_CXX11 = c++0x

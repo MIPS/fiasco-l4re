@@ -208,6 +208,9 @@ static int i8042_command(unsigned char *param, int command)
 			if ((retval = i8042_wait_read())) break;
 			if (command == I8042_CMD_AUX_LOOP &&
 			    !(i8042_read_status() & I8042_STR_AUXDATA)) {
+#if 1 /* Kyma: fix a deadlock bug */
+                                spin_unlock_irqrestore(&i8042_lock, flags);
+#endif
 				dbg("     -- i8042 (auxerr)");
 				return -1;
 			}
@@ -571,6 +574,13 @@ static int __init i8042_check_aux(struct i8042_values *values)
 	unsigned char param;
 	static int i8042_check_aux_cookie;
 
+#if (defined(ARCH_mips) && defined(L4INPUT))
+        /*
+         * Kyma: malta platform on IASim needs i8042_bypass_aux_irq_test=1 but
+         * this is not available in 2.6 linux i8042.c
+         */
+        (void)i8042_check_aux_cookie;
+#else
 /*
  * Check if AUX irq is available. If it isn't, then there is no point
  * in trying to detect AUX presence.
@@ -580,6 +590,7 @@ static int __init i8042_check_aux(struct i8042_values *values)
 				"i8042", &i8042_check_aux_cookie))
                 return -1;
 	free_irq(values->irq, &i8042_check_aux_cookie);
+#endif
 
 /*
  * Get rid of bytes in the queue.

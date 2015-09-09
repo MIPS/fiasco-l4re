@@ -16,7 +16,7 @@
 
 enum {
   debug_errors        = 1,
-  debug_warnings      = 0,
+  debug_warnings      = 1,
   debug_ipc           = 0,
   debug_memory_maps   = 1,
 

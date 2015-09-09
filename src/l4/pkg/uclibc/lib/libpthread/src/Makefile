@@ -16,6 +16,7 @@ DIR_x86   := i386
 DIR_arm   := arm
 DIR_ppc32 := powerpc
 DIR_sparc := sparc
+DIR_mips  := mips
 
 SRC_CC      = manager.cc l4.cc
 SRC_C      += spinlock.c mutex.c condvar.c rwlock.c errno.c specific.c \
@@ -39,6 +40,7 @@ INCDIR-ppc32 = $(SRC_DIR)/sysdeps/powerpc \
                $(CONTRIBDIR)/libpthread/linuxthreads/sysdeps/powerpc
 INCDIR-sparc = $(SRC_DIR)/sysdeps/sparc \
                $(CONTRIBDIR)/libpthread/linuxthreads/sysdeps/sparc
+INCDIR-mips  = $(SRC_DIR)/sysdeps/mips
 
 PRIVATE_INCDIR = $(SRC_DIR) $(INCDIR-$(ARCH)) $(CONTRIBDIR)/ldso/include
 
@@ -51,6 +53,7 @@ DEFINES_amd64-l4f := -DUSE___THREAD=1
 DEFINES_arm-l4f   := -DUSE___THREAD=1 
 DEFINES_ppc32-l4f := -DUSE___THREAD=1 
 DEFINES_sparc-l4f := -DUSE___THREAD=1 
+DEFINES_mips-l4f  := -DUSE___THREAD=1 
 
 CFLAGS    += -include $(CONTRIBDIR)/include/libc-symbols.h
 CXXFLAGS  += -include $(CONTRIBDIR)/include/libc-symbols.h

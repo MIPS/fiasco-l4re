@@ -22,6 +22,7 @@ my $arch                 = $ENV{OPT_ARCH}     || "x86";
 
 my $module_path   = $ENV{SEARCHPATH}    || ".";
 my $prog_objcopy  = $ENV{OBJCOPY}       || "${cross_compile_prefix}objcopy";
+my $prog_objdump  = $ENV{OBJDUMP}       || "${cross_compile_prefix}objdump";
 my $prog_cc       = $ENV{CC}            || "${cross_compile_prefix}gcc";
 my $prog_ld       = $ENV{LD}            || "${cross_compile_prefix}ld";
 my $prog_cp       = $ENV{PROG_CP}       || "cp";
@@ -34,6 +35,7 @@ my $make_inc_file = $ENV{MAKE_INC_FILE} || "mod.make.inc";
 my $flags_cc     = "";
 $flags_cc = "-m32" if $arch eq 'x86';
 $flags_cc = "-m64" if $arch eq 'amd64';
+$flags_cc = $ENV{CARCHFLAGS} if $arch eq 'mips';
 
 
 my $modulesfile      = $ARGV[1];
@@ -100,7 +102,7 @@ sub build_obj($$$)
   my $md5_compr = $c_compr->hexdigest;
   my $md5_uncompr = $c_unc->hexdigest;
 
-  my $section_attr = ($arch eq 'x86' || $arch eq 'amd64' || $arch eq 'ppc32'
+  my $section_attr = ($arch eq 'x86' || $arch eq 'amd64' || $arch eq 'ppc32' || $arch eq 'mips'
        ? #'"a", @progbits' # Not Xen
          '\"awx\", @progbits' # Xen
        : '#alloc' );

@@ -35,6 +35,7 @@ public:
     Cap_info    = 2,
     Add_ku_mem  = 3,
     Ldt_set_x86 = 0x11,
+    Cp0_mips    = 0x20,
   };
 
 private:

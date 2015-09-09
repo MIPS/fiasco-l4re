@@ -25,6 +25,7 @@
 #include <l4/cxx/l4iostream>
 
 #include <l4/util/mb_info.h>
+#include <l4/bid_config.h>
 
 #include <cctype>
 #include <cstdlib>
@@ -126,11 +127,13 @@ static void find_memory()
 
   for (unsigned order = 30 /*1G*/; order >= L4_LOG2_PAGESIZE; --order)
     {
+      info.printf("Calling l4sigma0_map_anypage (order=%d)\n", order);
       while (!l4sigma0_map_anypage(Sigma0_cap, 0, L4_WHOLE_ADDRESS_SPACE,
                                    &addr, order))
         {
           unsigned long size = 1UL << order;
 
+          info.printf("l4sigma0_map_anypage(%d): addr: %#lx\n", order, addr);
           if (addr == 0)
             {
               addr = L4_PAGESIZE;
@@ -559,7 +562,9 @@ int main(int argc, char**argv)
       root_name_space()->register_obj("icu", Obj(Obj::F_rw, L4_BASE_ICU_CAP));
       root_name_space()->register_obj("sigma0", Obj(Obj::F_trusted | Obj::F_rw, L4_BASE_PAGER_CAP));
       root_name_space()->register_obj("mem", Obj(Obj::F_trusted | Obj::F_rw, Allocator::root_allocator()));
-
+#ifdef CONFIG_PLATFORM_TYPE_karma_guest
+      root_name_space()->register_obj("intervm", Obj(Obj::F_rw, L4_BASE_INTERVM_CAP));
+#endif
       char *cmdline = my_cmdline();
 
       info.printf("cmdline: %s\n", cmdline);

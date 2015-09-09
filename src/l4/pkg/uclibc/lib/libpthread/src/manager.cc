@@ -39,6 +39,7 @@
 #include <l4/sys/factory>
 #include <l4/sys/scheduler>
 #include <l4/sys/thread>
+#include <l4/sys/debugger>
 
 extern "C" {
 #include "pthread.h"
@@ -121,7 +122,7 @@ __pthread_manager(void *arg)
 # if defined(TLS_TCB_AT_TP)
   TLS_INIT_TP(self, 0);
 #elif defined(TLS_DTV_AT_TP)
-  TLS_INIT_TP(self + 1, 0);
+  TLS_INIT_TP(((char *) self + TLS_PRE_TCB_SIZE), 0);
 #else
 #  error "Either TLS_TCB_AT_TP or TLS_DTV_AT_TP must be defined"
 #endif
@@ -262,7 +263,7 @@ pthread_start_thread(void *arg)
 # if defined(TLS_TCB_AT_TP)
   TLS_INIT_TP(self, 0);
 #elif defined(TLS_DTV_AT_TP)
-  TLS_INIT_TP(self + 1, 0);
+  TLS_INIT_TP(((char *) self + TLS_PRE_TCB_SIZE), 0);
 #else
 #  error "Either TLS_TCB_AT_TP or TLS_DTV_AT_TP must be defined"
 #endif
@@ -637,6 +638,7 @@ int __pthread_start_manager(pthread_descr mgr)
     }
 
   __pthread_manager_request = mgr->p_th_cap;
+  l4_debugger_set_object_name(__pthread_manager_request, "pthread_manager");
   return 0;
 }
 

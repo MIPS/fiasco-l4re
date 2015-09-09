@@ -412,6 +412,8 @@ int uname(struct utsname *u)
   strncpy(u->machine, "ppc32", sizeof(u->machine));
 #elif defined(ARCH_sparc)
   strncpy(u->machine, "sparcv8", sizeof(u->machine));
+#elif defined(ARCH_mips)
+  strncpy(u->machine, "mips", sizeof(u->machine));
 #else
 #error Add your arch.
 #endif

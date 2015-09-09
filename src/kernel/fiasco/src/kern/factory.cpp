@@ -267,7 +267,7 @@ Factory::kinvoke(L4_obj_ref ref, L4_fpage::Rights rights, Syscall_frame *f,
 
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [svm || vmx || arm_em_tz]:
+IMPLEMENTATION [svm || vmx || arm_em_tz || mips_vz]:
 
 #include "vm_factory.h"
 #include "vm.h"
@@ -283,7 +283,7 @@ Factory::new_vm(Utcb const *, int *err)
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [!svm && !vmx && !arm_em_tz]:
+IMPLEMENTATION [!svm && !vmx && !arm_em_tz && !mips_vz]:
 
 PRIVATE inline NOEXPORT
 Kobject_iface *

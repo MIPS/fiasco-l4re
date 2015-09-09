@@ -354,3 +354,23 @@ l4io_has_resource(enum l4io_resource_types_t type,
     }
   return 0;
 }
+
+void l4io_dump_vbus(void)
+{
+  l4io_device_handle_t devhandle = l4io_get_root_device();
+  l4io_device_t dev;
+  l4io_resource_handle_t reshandle;
+
+  while (!l4io_iterate_devices(&devhandle, &dev, &reshandle))
+    {
+      l4io_resource_t res;
+      printf("device: type=%x  name=%s numres=%d flags=%x\n",
+             dev.type, dev.name, dev.num_resources, dev.flags);
+      while (!l4io_lookup_resource(devhandle, L4IO_RESOURCE_ANY,
+                                   &reshandle, &res))
+        {
+          printf("   resource: %d %x %lx-%lx\n",
+                 res.type, res.flags, res.start, res.end);
+        }
+    }
+}

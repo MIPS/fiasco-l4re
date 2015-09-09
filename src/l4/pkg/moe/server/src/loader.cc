@@ -32,6 +32,9 @@
 #include <l4/sys/task>
 #include <l4/sys/thread>
 #include <l4/re/error_helper>
+#if defined(ARCH_mips)
+#include <l4/sys/mem_layout.h>
+#endif
 
 #include <l4/re/env>
 
@@ -195,13 +198,20 @@ Moe_app_model::Moe_app_model(App_task *t, cxx::String const &prog,
 {
   enum
   {
+#if defined(ARCH_mips)
+    Utcb_area_start        = Mem_layout::Utcb_area_start,
+    Kip_address            = Mem_layout::Kip_address,
+#else
     Kip_address            = 0xa0000000,
     Utcb_area_start        = 0xb3000000,
+#endif
     Default_max_threads    = 16,
   };
   // set default values for utcb area, values may be changed by loader
   _info.utcbs_start = Utcb_area_start;
   _info.utcbs_log2size  = l4util_log2(Default_max_threads * L4_UTCB_OFFSET);
+  if (_info.utcbs_log2size < L4_PAGESIZE)
+    _info.utcbs_log2size  = l4util_log2(L4_PAGESIZE);
 
   // set default values for the application stack
   _info.kip = Kip_address;

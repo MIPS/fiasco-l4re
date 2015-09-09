@@ -18,7 +18,7 @@ class Dataspace_noncont : public Dataspace
 public:
   enum
   {
-    Page_addr_mask = ~((1UL << 12)-1),
+    Page_addr_mask = L4_PAGEMASK,
     Page_cow = 0x04UL,
   };
 
@@ -74,9 +74,9 @@ public:
 
 #if 0
 private:
-  unsigned idx_of(unsigned long offset) const { return offset >> 12; }
+  unsigned idx_of(unsigned long offset) const { return offset >> L4_PAGESHIFT; }
 
-  void *page(unsigned idx) const
+  void *page(unsigned idx) const 
   { return (void*)(pages[idx] & Page_addr_mask); }
   unsigned flags(unsigned idx) const { return pages[idx] & ~Page_addr_mask; }
   void page(unsigned idx, void *page, unsigned flags = 0) const

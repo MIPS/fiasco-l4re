@@ -1,0 +1,198 @@
+HOWTO for building Fiasco/L4Re as a Guest OS for the Karma VMM
+
+Updated Mar 31, 2015
+
+Overview
+========
+
+A karma guest OS running Fiasco and L4Re must be recompiled to run on a virtual
+target platform instead of a real hardware target platform (such as malta or
+sead3). Fiasco and L4Re (more specifically, the L4Re bootstrap module) will run
+on a virtualized and simplified karma guest platform.  The karma VMM application
+running on the host, loads the guest OS, switches to mips VZ guest mode, and
+jumps to the start of the guest L4Re bootstrap module.  The guest bootstrap
+works the same as the regular host L4Re bootstrap and will load the guest Fiasco
+kernel and guest L4Re modules and applications.
+
+Once recompiled for the virtual karma guest platform, the bundled Fiasco/L4Re
+guest OS (including its applications) is then linked in as a single module along
+with other host modules in the host Fiasco/L4Re bootstrap application.
+
+It is recommended to maintain separate host and guest build directories, both
+built from the same Fiasco/L4Re source tree.
+
+
+
+Building the Fiasco Kernel as Guest OS for the Karma VMM platform
+=================================================================
+
+ Change to Fiasco directory containing top-level Makefile
+   cd src/kernel/fiasco
+
+ Create a new Fiasco guest build directory that is separate from the one used to
+ build the host Fiasco image, i.e. <build_guest_fiasco> at top level (or
+ elsewhere)
+   make BUILDDIR=../../../build-guest/fiasco
+ 
+ Configure Fiasco from the default karma guest configuration template; this will
+ choose karma as the target platform.
+   cp src/templates/globalconfig.out.mips32-karma <build_guest_fiasco>/globalconfig.out
+
+ Build Fiasco from <build-guest-fiasco> as per HOWTO.l4re
+
+
+
+Building the L4 Runtime Environment for the Karma VMM platform
+==============================================================
+
+ Create a new L4Re build directory <build_guest_l4>, images directory, and
+ optionally configure L4Re.  Choose the karma platform to match the Fiasco
+ kernel config.
+   cd src/l4
+   make B=../../build-guest/l4
+   mkdir ../../build-guest/l4/images
+   cd ../../build-guest/l4
+   make -j4
+ 
+ Build L4Re from <build-guest-l4> as per HOWTO.l4re
+
+ TROUBLESHOOTING: "Library dependencies missing: libkarma"
+
+ Try explicitly making karma and then resume the build. The L4Re build system
+ seems to have a limitation regarding specifying conditional package
+ dependencies.
+   make S=karma
+   make -j4
+
+
+
+Configuring Guest OS Bootstrap Search Paths and ELF Filename
+============================================================
+
+ Create a Makeconf.boot file in the <build_guest_l4>/conf directory instead of
+ the one in src/l4/conf to customize and select the correct paths for the guest
+ OS.  To avoid confusing the host and guest bootstrap.elf files, change the
+ default guest bootstrap filename using BOOTSTRAP_ELF_NAME.
+
+   cd <build_guest_l4>
+   mkdir conf
+   cat > conf/Makeconf.boot
+   BOOTSTRAP_ELF_NAME     = guest_os
+   BOOTSTRAP_SEARCH_PATH := $(L4DIR_ABS)/../../build-guest/fiasco
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/conf/examples
+   BOOTSTRAP_MODULES_LIST = $(L4DIR_ABS)/conf/modules.list
+
+ See src/l4/pkg/bootstrap/server/src/Make.rules for some additional Makefile
+ environment variables.
+
+
+
+Create a Guest OS Bootstrap ELF Image
+=====================================
+
+ Create the guest OS containing Guest Fiasco/L4Re and guest application,
+ specifying the guest application entry point as usual E=<entry_point>
+
+   cd <build_guest_l4>
+   make E=hello S=bootstrap
+
+ To change the amount of memory available to the Guest Fiasco define
+ CONFIG_RAM_SIZE_MB when building bootstrap.  Alternatively, edit
+ PLATFORM_RAM_SIZE_MB in src/l4/mk/platforms/karma_guest.conf.
+
+ Be sure to also adjust the "--mem" parameter in the karma config file.
+
+   cd <build_guest_l4>
+   make E=hello S=bootstrap CONFIG_RAM_SIZE_MB=32
+
+ The resulting guest OS binary and a few aliases are located under images.
+
+   <build_guest_l4>/images/guest_os (if BOOTSTRAP_ELF_NAME = guest_os) OR
+   <build_guest_l4>/images/bootstrap.elf
+   <build_guest_l4>/images/bootstrap_hello
+   <build_guest_l4>/images/bootstrap_hello.elf
+
+ The bootstrap.elf image (or BOOTSTRAP_ELF_NAME.elf) always refers to the last
+ built ELF image and is useful to use in scripts. Using BOOTSTRAP_ELF_NAME helps
+ to reduce confusion with the host bootstrap.elf file.
+
+
+
+Configuring the host to find and include the Guest OS
+=====================================================
+
+ If not already done, modify src/l4/conf/modules.list to include the guest OS
+ module.
+
+   edit: src/l4/conf/modules.list
+   entry karma_fiasco
+      ...
+      module guest_os
+
+ Modify karma and its Lua config files as necessary to select the correct guest
+ OS to load. For example one VM may run a Linux OS and another may run the
+ Fiasco/L4Re guest OS. Also set the configured amount of RAM for the guest
+ kernel.  Edit Lua config file for karma guest:
+ (i.e. src/l4/pkg/karma/config/<karma_fiasco.cfg>)
+
+   "rom/karma_fiasco",
+      "--kernel_name=guest_os",
+      "--mem", "<CONFIG_RAM_SIZE_MB/PLATFORM_RAM_SIZE_MB>"
+
+ Modify the host Makeconf.boot file to include the path to the guest OS in
+ <build_guest_l4> as well as any other required config files.  For example
+ create <build_l4>/conf/Makeconf.boot containing:
+
+   BOOTSTRAP_SEARCH_PATH  = $(L4DIR_ABS)/conf/examples
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/fiasco
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build-guest/l4/images
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/config
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/io/config
+   BOOTSTRAP_MODULES_LIST = $(L4DIR_ABS)/conf/modules.list
+
+
+
+Create a Host Bootstrap ELF Image containing the Guest OS
+=========================================================
+
+ Whenever the guest OS bootstrap image is rebuilt the host L4Re bootstrap image
+ must be rebuilt as well.
+
+ Specify the karma application entry point as usual E=<entry_point>
+
+   cd <build_l4>
+   make E=karma_fiasco S=bootstrap
+
+ The resulting host binary and a few aliases are located under images.
+
+   <build_l4>/images/bootstrap.elf
+   <build_l4>/images/bootstrap_karma_fiasco
+   <build_l4>/images/bootstrap_karma_fiasco.elf
+
+ It is recommended to check the output of the bootstrap module linking to ensure
+ that the modules are being loaded from the correct search paths.
+
+
+
+Example directory layout
+========================
+
+ fiasco.git/
+ |-- build
+ |   |-- fiasco
+ |   `-- l4
+ |   |   |-- conf/Makeconf.boot
+ |   |   `-- images
+ |   `-- linux
+ |-- build-guest
+ |   |-- fiasco
+ |   `-- l4
+ |       |-- conf/Makeconf.boot
+ |       `-- images
+ `-- src
+     |-- kernel
+     |   `-- fiasco
+     `-- l4
+     |   |-- conf/modules.list
+     |   `-- pkg
+     `-- linux

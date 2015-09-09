@@ -1,6 +1,7 @@
 PKGDIR		?= ../..
 L4DIR		?= $(PKGDIR)/../..
 
+SYSTEMS               = arm-l4f
 DTBS                  = virt-omap5.dtb virt-exynos5.dtb
 DEL_ON_CLEAN          = $(DTBS)
 INSTALL_TARGET        = $(DTBS)

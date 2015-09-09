@@ -1,0 +1,23 @@
+# PF: MALTA
+# PFDESCR: MIPS Malta platform
+# PFDEPENDS: MIPS32
+# PFSELECT: SYS_HAS_CPU_MIPS32_R2
+
+choice
+	prompt "Malta Platform"
+	default PF_MALTA_UP
+
+config PF_MALTA_UP
+	bool "Single CPU Platform"
+	depends on PF_MALTA
+	select CAN_MIPS_VZ_ASE
+
+config PF_MALTA_MP
+	bool "Multicore CPU Platform"
+	depends on PF_MALTA
+	select CAN_MIPS_CPU_MP
+	select CAN_MIPS_VZ_ASE
+        help
+          Use CONFIG_MP_MAX_CPUS to set the maximum supported number of CPUs
+
+endchoice

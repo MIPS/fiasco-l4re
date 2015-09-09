@@ -1073,7 +1073,8 @@ Jdb_module::Cmd const *
 Jdb_base_cmds::cmds() const
 {
   static Cmd cs[] =
-    { { 0, "*", "mode", "", "*|mode\tswitch long and short command mode",
+    { { 0, "*", "mode", "", "*|mode\tswitch long and short command mode\n"
+        "\t(some commands only available in long mode)\n",
 	(void*)0 } };
 
   return cs;

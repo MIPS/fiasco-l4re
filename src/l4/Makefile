@@ -405,6 +405,7 @@ BUILDDIR_SEARCHPATH = $(OBJ_BASE)/bin/$(ARCH)_$(CPU):$(OBJ_BASE)/bin/$(ARCH)_$(C
 QEMU_ARCH_MAP_$(ARCH) = qemu-system-$(ARCH)
 QEMU_ARCH_MAP_x86     = $(strip $(shell if qemu-system-i386 -version > /dev/null; then echo qemu-system-i386; else echo qemu; fi))
 QEMU_ARCH_MAP_amd64   = qemu-system-x86_64
+QEMU_ARCH_MAP_mips    = qemu-system-mipsel
 QEMU_ARCH_MAP_ppc32   = qemu-system-ppc
 
 FASTBOOT_BOOT_CMD    ?= fastboot boot

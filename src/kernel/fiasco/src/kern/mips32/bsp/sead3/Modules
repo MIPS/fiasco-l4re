@@ -1,0 +1,13 @@
+# vim:set ft=make:
+
+RAM_PHYS_BASE		:= 0x0
+PREPROCESS_PARTS	+= sead3 libuart
+config_IMPL		+= config-mips32-sead3
+pic_IMPL		+= pic-mips32-sead3
+clock_IMPL		+= clock-generic
+SUBSYSTEMS		+= LIBUART
+OBJECTS_LIBUART		+= uart_sead3.o
+uart_IMPL		+= uart-16550-mips-sead3 uart-mmio-mips-sead3
+kernel_uart_IMPL	+= kernel_uart-mips32-sead3
+timer_IMPL		+= timer-mips32-sead3
+cp0_status_IMPL		+= cp0_status-sead3

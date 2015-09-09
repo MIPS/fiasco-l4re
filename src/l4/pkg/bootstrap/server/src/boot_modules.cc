@@ -638,7 +638,7 @@ Boot_modules_image_mode::construct_mbi(unsigned long mod_addr)
 
   for (Mod_info const *mod = _module_info_start; mod != _module_info_end;
        ++mod)
-    mbi_size += round_wordsize(strlen(mod_cmdline(mod)));
+    mbi_size += round_wordsize(strlen(mod_cmdline(mod)) + 1);
 
   l4util_mb_info_t *mbi = (l4util_mb_info_t *)mem_manager->find_free_ram(mbi_size);
   if (!mbi)

@@ -69,6 +69,22 @@ Mem_region_map_base::del(unsigned start, unsigned end)
   _l -= delta;
 }
 
+PRIVATE inline
+void
+Mem_region_map_base::remove(unsigned start, unsigned end)
+{
+  register unsigned delta = end - start;
+  for (unsigned p = start; p < _l; ++p)
+    {
+      if ((p + delta) < _l)
+        _r[p] = _r[p + delta];
+      else
+        _r[p] = Mem_region(0,0);
+    }
+
+  _l -= delta;
+}
+
 PUBLIC inline NEEDS[Mem_region_map_base::del]
 bool
 Mem_region_map_base::add(Mem_region const &r)
@@ -105,7 +121,7 @@ Mem_region_map_base::add(Mem_region const &r)
 }
 
 
-PUBLIC inline NEEDS[Mem_region_map_base::del]
+PUBLIC inline NEEDS[Mem_region_map_base::remove]
 bool
 Mem_region_map_base::sub(Mem_region const &r)
 {
@@ -119,7 +135,7 @@ Mem_region_map_base::sub(Mem_region const &r)
 	{
 	  if (r.contains(_r[pos]))
 	    {
-	      del(pos, pos+1);
+	      remove(pos, pos+1);
 	      --pos; // ensure we do not skip the next element
 	    }
 	  else if (r.start <= _r[pos].start)

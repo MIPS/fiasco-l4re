@@ -49,6 +49,10 @@ Moe::Dataspace::map(l4_addr_t offs, l4_addr_t hot_spot, bool _rw,
   if (adr.is_nil())
     return -L4_EPERM;
 
+  // KYMA Typically Cacheopt is in flag bits 6:4, however the (_flags >> 12)
+  // seems to be accommodating the usage of (L4_FPAGE_BUFFERABLE << 16) in the
+  // call to Moe::Dataspace_static() in moe/server/src/vesa_fb.cc. (i.e. the
+  // shift by 12 is not an issue of hardcoding 4KB vs 16KB pagesize).
   memory = L4::Ipc::Snd_fpage(adr.fp(), hot_spot, L4::Ipc::Snd_fpage::Map,
                          (L4::Ipc::Snd_fpage::Cacheopt)((_flags >> 12) & (7 << 4)));
 

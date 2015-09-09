@@ -1,6 +1,8 @@
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>
  *     economic rights: Technische Universität Dresden (Germany)
+ * Copyright (C) 2014 Imagination Technologies Ltd.
+ * Author: Yann Le Du <ledu@kymasys.com>
  *
  * This file is part of TUD:OS and distributed under the terms of the
  * GNU General Public License 2.
@@ -21,11 +23,36 @@
 #include <pthread-l4.h>
 
 #include <l4/sys/thread.h>
+#include <l4/sys/debugger.h>
+
+/*
+ * NOTE: The l4shmc API does not provide any way to recover lost signals. If
+ * l4shmc_wait_chunk() or l4shmc_wait_signal() are not called before the other
+ * side sends a signal, that signal will be lost and the waitee will hang.
+ *
+ * This example program is sensitive to the scheduling order of the threads. The
+ * initialization order of the original version has been re-arranged to ensure
+ * objects are created before the other side requests them. When started under
+ * conditions that cause the threads to run in a different order (such as with
+ * different system task priorities, extra printfs, or running in a VM) it may
+ * cause a signal to be lost and both threads to hang. The program has been
+ * changed to account for this.
+ *
+ * The printf statements may be printed in a different order dependent on
+ * preemption and scheduling.
+ */
 
 // a small helper
 #define CHK(func) if (func) { printf("failure: %d\n", __LINE__); return (void *)-1; }
 
-static const char some_data[] = "Hi consumer!";
+static char some_data[] = "0-Hi consumer!";
+
+void set_some_data(void);
+void set_some_data(void) {
+  static int i = 0;
+  some_data[0] = '0' + i++;
+  i %= 10;
+}
 
 static void *thread_producer(void *d)
 {
@@ -33,6 +60,8 @@ static void *thread_producer(void *d)
   l4shmc_chunk_t p_one;
   l4shmc_signal_t s_one, s_done;
   l4shmc_area_t shmarea;
+
+  l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "prod");
 
   // attach this thread to the shm object
   CHK(l4shmc_attach("testshm", &shmarea));
@@ -43,11 +72,11 @@ static void *thread_producer(void *d)
   // add a signal
   CHK(l4shmc_add_signal(&shmarea, "prod", &s_one));
 
-  CHK(l4shmc_attach_signal_to(&shmarea, "done",
-                              pthread_getl4cap(pthread_self()), 10000, &s_done));
-
   // connect chunk and signal
   CHK(l4shmc_connect_chunk_signal(&p_one, &s_one));
+
+  CHK(l4shmc_attach_signal_to(&shmarea, "done",
+                              pthread_getl4cap(pthread_self()), 10000, &s_done));
 
   printf("PRODUCER: ready\n");
 
@@ -56,11 +85,13 @@ static void *thread_producer(void *d)
       while (l4shmc_chunk_try_to_take(&p_one))
         printf("Uh, should not happen!\n"); //l4_thread_yield();
 
+      set_some_data();
+
       memcpy(l4shmc_chunk_ptr(&p_one), some_data, sizeof(some_data));
 
       CHK(l4shmc_chunk_ready_sig(&p_one, sizeof(some_data)));
 
-      printf("PRODUCER: Sent data\n");
+      printf("PRODUCER: Sent data %s\n", some_data);
 
       CHK(l4shmc_wait_signal(&s_done));
     }
@@ -76,12 +107,13 @@ static void *thread_consume(void *d)
   l4shmc_area_t shmarea;
   l4shmc_chunk_t p_one;
   l4shmc_signal_t s_one, s_done;
+  const unsigned int MICROSEC_DELAY = 1 * 1000000;
+  l4_timeout_t timeout = l4_timeout(L4_IPC_TIMEOUT_NEVER,l4util_micros2l4to(MICROSEC_DELAY));
+
+  l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "cons");
 
   // attach to shared memory area
   CHK(l4shmc_attach("testshm", &shmarea));
-
-  // get chunk 'one'
-  CHK(l4shmc_get_chunk(&shmarea, "one", &p_one));
 
   // add a signal
   CHK(l4shmc_add_signal(&shmarea, "done", &s_done));
@@ -90,12 +122,19 @@ static void *thread_consume(void *d)
   CHK(l4shmc_attach_signal_to(&shmarea, "prod",
                               pthread_getl4cap(pthread_self()), 10000, &s_one));
 
+  // get chunk 'one'
+  CHK(l4shmc_get_chunk(&shmarea, "one", &p_one));
+
   // connect chunk and signal
   CHK(l4shmc_connect_chunk_signal(&p_one, &s_one));
 
   while (1)
     {
-      CHK(l4shmc_wait_chunk(&p_one));
+      while(l4shmc_wait_chunk_to(&p_one, timeout)) {
+        // maybe we missed the initial signal?
+        if (l4shmc_is_chunk_ready(&p_one))
+          break;
+      }
 
       printf("CONSUMER: Received from chunk one: %s\n",
              (char *)l4shmc_chunk_ptr(&p_one));

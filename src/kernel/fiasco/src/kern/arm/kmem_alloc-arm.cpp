@@ -47,6 +47,8 @@ Kmem_alloc::Kmem_alloc()
   Mem_region_map<64> map;
   unsigned long available_size = create_free_map(Kip::k(), &map);
 
+	printf("Available physical memory: %#lx\n", available_size);
+
   // sanity check whether the KIP has been filled out, number is arbitrary
   if (available_size < (1 << 18))
     panic("Kmem_alloc: No kernel memory available (%ld)\n",
@@ -59,13 +61,14 @@ Kmem_alloc::Kmem_alloc()
 	f.start += (f.size() - alloc_size);
 
       Kip::k()->add_mem_region(Mem_desc(f.start, f.end, Mem_desc::Reserved));
-      //printf("ALLOC1: [%08lx; %08lx] sz=%ld\n", f.start, f.end, f.size());
-      if (Mem_layout::phys_to_pmem(f.start) == ~0UL)
+      printf("ALLOC1: [%08lx; %08lx] sz=%ld\n", f.start, f.end, f.size());
+      if (Mem_layout::phys_to_pmem(f.start) == ~0UL) {
 	if (!map_pmem(f.start, f.size()))
 	  panic("Kmem_alloc: cannot map physical memory %p\n", (void*)f.start);
 
       a->add_mem((void *)Mem_layout::phys_to_pmem(f.start), f.size());
       alloc_size -= f.size();
+			}
     }
 
   if (alloc_size)

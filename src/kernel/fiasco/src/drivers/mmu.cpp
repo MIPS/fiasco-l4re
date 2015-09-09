@@ -70,7 +70,7 @@ public:
 };
 
 //---------------------------------------------------------------------------
-IMPLEMENTATION [!arm || arm_nocache]:
+IMPLEMENTATION [(!arm && !mips32) || arm_nocache]:
 
 IMPLEMENT inline
 template< unsigned long Flush_area, bool Ram >
@@ -85,6 +85,11 @@ void Mmu<Flush_area, Ram>::flush_cache(void const *, void const *)
 IMPLEMENT inline
 template< unsigned long Flush_area, bool Ram >
 void Mmu<Flush_area, Ram>::clean_dcache()
+{}
+
+IMPLEMENT inline
+template< unsigned long Flush_area, bool Ram >
+void Mmu<Flush_area, Ram>::clean_dcache(void const *)
 {}
 
 IMPLEMENT inline

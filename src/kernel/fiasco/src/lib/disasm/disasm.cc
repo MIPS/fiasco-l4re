@@ -235,6 +235,9 @@ disasm_bytes(char *buffer, unsigned len, Address addr,
 #elif defined CONFIG_SPARC
   dis_info.mach = bfd_mach_sparc_v8plusa;
   return print_insn_sparc(addr, &dis_info);
+#elif defined CONFIG_MIPS32
+	dis_info.mach = bfd_mach_mipsisa32r2;
+	return print_insn_little_mips(addr, &dis_info);
 #else
 #error Unknown architecture
 #endif

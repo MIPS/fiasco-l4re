@@ -3,6 +3,8 @@
 #
 # Makefile-Include for defining modes
 
+include $(L4DIR)/mk/Makeconf
+
 ifneq ($(L4_MULTITHREADED),)
   $(error L4_MULTITHREADED is obsolete, just remove, reentrance is default now, you might want to add 'libpthread' to REQUIRES_LIBS)
 endif
@@ -90,7 +92,9 @@ REQUIRES_LIBS_all_shared        = stdlibs-sh
 L4_LIBS_all_shared             += -nostdlib -luc_c_nonshared.p \
 				  $(GCCLIB_SO) $(GCCLIB_EH)    \
 				  $(EXTRA_LIBS)
+ifneq ($(ARCH),mips)
 LDFLAGS_all_shared              = --eh-frame-hdr
+endif
 
 ################################
 # l4linux mode
@@ -121,8 +125,10 @@ LIBCINCDIR_all_lib    = $(LIBC_INCLUDE)
 CRT0_all_lib          = $(CRTI_dyn_bin) $(CRTBEGIN_dyn_bin) $(CRT1_dyn_bin)
 CRTN_all_lib          = $(CRTN_dyn_bin)
 LDSCRIPT_all_lib      = $(LDS_so)
-LDFLAGS_all_lib       = --eh-frame-hdr
 
+ifneq ($(ARCH),mips)
+LDFLAGS_all_lib       = --eh-frame-hdr
+endif
 
 #####################################
 # host mode -- no L4 specifics

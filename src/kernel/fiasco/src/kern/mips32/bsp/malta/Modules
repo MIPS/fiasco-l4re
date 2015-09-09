@@ -1,0 +1,21 @@
+# vim:set ft=make:
+
+RAM_PHYS_BASE			:= 0x0
+PREPROCESS_PARTS		+= malta 16550 i8259 libuart
+PREPROCESS_PARTS-$(CONFIG_MP)	+= pic_gic cps
+PREPROCESS_PARTS		+= $(PREPROCESS_PARTS-y)
+SUBSYSTEMS			+= LIBUART
+OBJECTS_LIBUART			+= uart_pxa.o
+
+INTERFACES_KERNEL		+= gic
+
+config_IMPL			+= config-mips32-malta
+pic_IMPL			+= pic-gic pic-mips32-malta pic-i8259
+gic_IMPL			+= gic gic-mips32-malta
+cpc_IMPL			+= cpc-mips32-malta
+clock_IMPL			+= clock-generic
+uart_IMPL			+= uart-16550
+kernel_uart_IMPL		+= kernel_uart-libuart
+timer_IMPL			+= timer-mips32-malta
+cp0_status_IMPL			+= cp0_status-malta
+platform_control_IMPL		+= platform_control-mips32-malta

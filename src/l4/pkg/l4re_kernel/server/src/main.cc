@@ -32,10 +32,15 @@
 #include "loader_elf.h"
 #include "debug.h"
 #include "dispatcher.h"
+#include "mem_layout.h"
 
 #include <l4/re/elf_aux.h>
 
+#if defined(ARCH_mips)
+L4RE_ELF_AUX_ELEM_T(l4re_elf_aux_mword_t, __stack_addr, L4RE_ELF_AUX_T_STACK_ADDR, Mem_layout::Stack_base);
+#else
 L4RE_ELF_AUX_ELEM_T(l4re_elf_aux_mword_t, __stack_addr, L4RE_ELF_AUX_T_STACK_ADDR, 0xb1000000);
+#endif
 
 using L4::Cap;
 using L4Re::Dataspace;
@@ -71,7 +76,11 @@ void *__libc_alloc_initial_tls(unsigned long size)
   if (Env::env()->mem_alloc()->alloc(size, ds, 0) < 0)
     return NULL;
 
+#if defined(ARCH_mips)
+  void *addr = (void*)Mem_layout::Initial_tls_base;
+#else
   void *addr = (void*)0xb0000000;
+#endif
   if(Env::env()->rm()->attach(&addr, size, Rm::Search_addr,
                               ds, 0, 0) < 0)
     return NULL;

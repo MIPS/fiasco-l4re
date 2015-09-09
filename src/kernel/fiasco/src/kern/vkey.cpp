@@ -22,7 +22,10 @@ Vkey::irq(Irq_base *i)
 { vkey_irq = i; }
 
 // ---------------------------------------------------------------------------
-IMPLEMENTATION [debug && serial && !ux]:
+// When the force_vkey and serial tags are both set the vkey_buffer will be used
+// for serial port processing even if the debug tag is not set.
+IMPLEMENTATION [force_vkey || (debug && serial && !ux)]:
+
 
 #include <cstdio>
 
@@ -33,7 +36,7 @@ IMPLEMENTATION [debug && serial && !ux]:
 #include "keycodes.h"
 
 static Vkey::Echo_type vkey_echo;
-static char     vkey_buffer[256];
+static unsigned char vkey_buffer[256];
 static unsigned vkey_tail, vkey_head;
 
 PUBLIC static
@@ -166,7 +169,7 @@ Vkey::clear()
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [!debug || !serial || ux]:
+IMPLEMENTATION [!force_vkey && (!debug || !serial || ux)]:
 
 PUBLIC static inline
 void
@@ -184,7 +187,7 @@ Vkey::add_char(int)
 {}
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [debug && (!serial || ux)]:
+IMPLEMENTATION [!force_vkey && debug && (!serial || ux)]:
 
 #include "kernel_console.h"
 
@@ -196,7 +199,7 @@ Vkey::get()
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [!debug && serial]:
+IMPLEMENTATION [!force_vkey && !debug && serial]:
 
 #include "kernel_console.h"
 
@@ -210,7 +213,7 @@ Vkey::get()
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION[!debug && !serial]:
+IMPLEMENTATION[!force_vkey && !debug && !serial]:
 
 PUBLIC static
 int
@@ -218,9 +221,9 @@ Vkey::get()
 { return -1; }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION[!debug || !serial]:
+IMPLEMENTATION[(!force_vkey && !debug) || !serial]:
 
 PUBLIC static inline
 int
 Vkey::check_(int = -1)
-{ return 0; }
+ { return 0; }

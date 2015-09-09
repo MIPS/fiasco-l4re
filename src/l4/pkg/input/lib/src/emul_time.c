@@ -18,7 +18,7 @@
  */
 
 /* L4 */
-#if !defined(ARCH_arm) && !defined(ARCH_sparc)
+#if !defined(ARCH_arm) && !defined(ARCH_sparc) && !defined(ARCH_mips)
 #include <l4/util/rdtsc.h>     /* XXX x86 specific */
 #endif
 #include <l4/util/util.h>
@@ -31,6 +31,10 @@ void udelay(unsigned long usecs)
 {
 #ifdef ARCH_arm
   l4_sleep(usecs/1000); // XXX
+#elif defined(ARCH_mips)
+#warning KYMA ARCH_mips l4_busy_wait_us() not implemented, using l4_usleep instead.
+  // this gives up control of cpu; it's not always what's wanted...
+  l4_usleep(usecs);
 #else
   l4_busy_wait_us(usecs);
 #endif

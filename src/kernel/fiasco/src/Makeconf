@@ -92,13 +92,14 @@ CXX			:= $(CCXX_WRAP) $(call $(USE_CCACHE),$(CCACHE)) $(SYSTEM_TARGET)$(CXX)$(CC
 CC_TYPE                 := $(if $(findstring clang,$(shell $(CXX) --version)),clang,gcc)
 CCVER_MAJOR		:= $(shell $(CXX) -dumpversion | cut -d . -f 1)
 CCVER_MINOR		:= $(shell $(CXX) -dumpversion | cut -d . -f 2)
-LIBGCC			:= $(shell $(CXX) -print-libgcc-file-name)
+LIBGCC			:= $(shell $(CXX) -print-libgcc-file-name $(SHARED_FLAGS))
 
 
 L4ALL_INCDIR     	?= $(addprefix -I, $(PRIVATE_INCDIR))
 L4STD_INCDIR    	?= -nostdinc
 L4STD_INCDIR_LAST	?= -I$(wildcard $(dir $(LIBGCC))/include \
-			                $(dir $(LIBGCC))/../include)
+			                $(dir $(LIBGCC))/../include \
+                      $(dir $(LIBGCC))/../../include)
 KERNEL_LDFLAGS		+= -gc-sections
 SHARED_FLAGS-gcc        += -fno-defer-pop
 # gcc #57845
@@ -132,7 +133,7 @@ OPT_SHARED_FLAGS   += $(OPT_SHARED_FLAGS-$(CC_TYPE))
 NOOPT_SHARED_FLAGS += $(NOOPT_SHARED_FLAGS-$(CC_TYPE))
 
 # Standard compile flags
-ASFLAGS		+= $(SHARED_FLAGS) -DASSEMBLER
+ASFLAGS		+= $(SHARED_FLAGS) -DASSEMBLER -D__ASSEMBLY__
 ASFLAGS-clang	+= -no-integrated-as
 CFLAGS		+= $(SHARED_FLAGS)
 CXXFLAGS	+= $(SHARED_FLAGS) -fno-rtti -fno-exceptions

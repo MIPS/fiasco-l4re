@@ -12,6 +12,7 @@
 #include <l4/cxx/iostream>
 #include <l4/cxx/l4iostream>
 
+#include "mem_layout.h"
 #include "page_alloc.h"
 #include "globals.h"
 #include "region.h"
@@ -20,9 +21,13 @@ using L4Re::Mem_alloc;
 using L4Re::Dataspace;
 using L4Re::chksys;
 
-enum { 
+enum {
   Heap_max = L4_PAGESIZE * 64,
+#if defined(ARCH_mips)
+  Heap_base = Mem_layout::Heap_base,
+#else
   Heap_base = 0xb0100000,
+#endif
 };
 
 

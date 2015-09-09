@@ -2,7 +2,7 @@ PKGDIR          ?= ../..
 L4DIR           ?= $(PKGDIR)/../..
 
 TARGET           = wget_clnt
-SYSTEMS          = x86-l4f arm-l4f
+SYSTEMS          = x86-l4f arm-l4f mips-l4f
 REQUIRES_LIBS    = liblwip_netif_ankh libc_be_fs_noop libc_support_misc libc_be_sig
 
 PRIVATE_INCDIR  += $(SRC_DIR)/contrib/src

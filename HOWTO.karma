@@ -1,0 +1,183 @@
+HOWTO for building and running the MIPS port of Karma and Karma Linux Guest VM.
+
+Updated: Jun 3, 2015
+
+Setup and obtain Karma VMM and Karma Linux
+============================================
+
+ First step, follow the setup and build instructions in HOWTO.l4re for the
+ Fiasco/L4Re build.  Next, obtain Karma and Karma Linux with para-virtualization
+ for the Guest VM.
+ 
+ For this setup <local_branch> is an arbitrary name and can match the
+ <remote_branch> if desired.  <remote_branch> is one of:
+   mips-next     - newer mips fiasco port based on upstream svn r67
+   devel-mips    - initial mips fiasco port based on upstream svn r54
+ 
+ Put the Karma VMM project into L4Re pkg directory
+   cd <path_to_workdir>/fiasco.git/src/l4/pkg
+   git clone git://<path_to_repository>/karma.git karma
+   cd ./karma
+   git branch --track <local_branch> origin/<remote_branch>
+   git checkout <local_branch>
+ 
+ Put the Karma Linux project under the fiasco.git src directory and create a
+ remote-tracking branch:
+   cd <path_to_workdir>/fiasco.git/src
+   git clone --branch karma_mips_3.10.14 --single-branch git://<path_to_repository>/linux-mti.git linux
+   git branch --track <local_branch> origin/karma_mips_3.10.14
+   git checkout <local_branch>
+
+ You should now have the Karma VMM and Karma Linux under fiasco.git:
+   fiasco.git/src/l4/pkg/karma
+   fiasco.git/src/linux
+
+
+
+Building Karma
+==============
+ 
+ Change to the L4Re build directory <build_l4>. Karma is built along with the
+ rest of the L4Re packages.
+
+ Build L4Re.  Specify make -j for faster builds.
+   cd <build_l4>
+   make -j2
+  OR (to only rebuild the karma package)
+   make S=karma
+
+
+
+Building Karma Linux the first time
+===================================
+ 
+ Two para-virtualized karma linux defconfigs are provided. The configurations
+ are able to co-exist when running side-by-side in two karma VMs.
+
+   karma_defconfig        - PV linux with karma-aware devices
+   karma_simple_defconfig - PV linux with limited subset of karma-aware devices
+
+ Create the Karma Linux build directory <build_linux> then setup make to use the
+ build directory and make the default karma kernel configuration.
+   cd fiasco.git
+   cd ./src/linux
+   mkdir ../../build/linux
+   make O=../../build/linux karma_defconfig
+   cd ../../build/linux (aka <build_linux>)
+
+ Use the linux build directory <build_linux> for subsequent builds. If make is
+ inadvertently run from fiasco.git/src/linux, make mrproper will need to be run
+ from the src/linux directory to clean it up.
+
+ Set the full path to the Karma package in the kernel config options and change
+ CONFIG_KARMA_PKG_PATH="/path/to/l4/pkg/karma".
+   cd <build_linux>
+   make menuconfig
+
+ Build Karma Linux.  Specify make -j for faster builds.
+   make -j2
+
+
+
+Building Karma linux-simple the first time
+==========================================
+
+ Building linux-simple follows the linux build steps with some modifications:
+   cd fiasco.git
+   cd ./src/linux
+   mkdir ../../build/linux-simple
+   make O=../../build/linux-simple karma_simple_defconfig
+   cd ../../build/linux-simple (aka <build_linux_simple>)
+
+ As a final step create a symlink to vmlinux and <build_linux_simple> to the
+ BOOTSTRAP_SEARCH_PATH in <build_l4>/conf/Makeconf.boot.
+   cd <build_linux_simple>
+   ln -s vmlinux vmlinux-simple
+
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
+
+
+
+Configuring L4 Search Paths
+===========================
+
+ Add Karma and Linux directories to the Makeconf.boot search paths as well as
+ paths to any other modules specified under the karma entry point in
+ src/l4/conf/modules.list.
+ 
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/config
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/files
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/io/config
+
+ The pkg/karma/files directory specified in the search path above contains a
+ busybox root file system image (for mipsel) that can be used as a starting
+ point. This file system image can be extracted on a host machine, modified, and
+ a new image created if desired.
+
+
+
+Configuring the Karma Linux Guest
+=================================
+
+ The Karma Linux guest VM takes its kernel command line options from the file
+ karma/config/karma-mips.cfg. Karma options can also be set in this file.
+
+
+
+Create a Bootstrap ELF Image with Karma and Karma Linux
+=======================================================
+
+ After all necessary components have been built (Fiasco, L4Re, Karma, and Karma
+ Linux) the bootstrap ELF image containing all the necessary modules can be
+ built.  If changes are made to any of the modules then bootstrap will have to
+ be rebuilt to pickup the latest version.
+
+ The following <entry_point> have been pre-defined in src/l4/conf/modules.list.
+ For karma_fiasco and karma_fiasco_sys see HOWTO.fiasco_guest for more details.
+
+   karma_hello      - Run karma VMM with demo karma_hello guest VM
+   karma            - Run karma VMM with guest VM running linux
+   karma_sys        - Run karma VMM with 2 guest VMs running linux
+   karma_fiasco     - Run karma VMM with guest VM running Fiasco.OC
+   karma_fiasco_sys - Run karma VMM with 2 guest VMs running linux and Fiasco.OC
+
+ Specify E=<entry_point> to build an ELF executable. 
+
+   cd <build_l4>
+   make E=karma S=bootstrap
+
+ The resulting binary and a few aliases are located under images.
+   images/bootstrap.elf
+   images/bootstrap_karma
+   images/bootstrap_karma.elf
+
+
+
+Loading and Running
+===================
+
+ # Running on IASim malta platform emulation
+ The images/bootstrap.elf binary can be loaded into the IASim malta platform.
+
+
+
+Example directory layout
+========================
+
+ fiasco.git/
+ |-- build
+ |   |-- fiasco
+ |   `-- l4
+ |   |   |-- conf/Makeconf.boot
+ |   |   `-- images
+ |   `-- linux
+ |   `-- linux-simple
+ `-- src
+     |-- kernel
+     |   `-- fiasco
+     `-- l4
+     |   |-- conf/modules.list
+     |   `-- pkg
+     `-- linux

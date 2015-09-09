@@ -10,6 +10,7 @@ SRC_C_amd64	= $(SRC_C_x86)
 SRC_C_arm	= yuv2rgb.c
 SRC_C_ppc32	= yuv2rgb.c
 SRC_C_sparc	= yuv2rgb.c
+SRC_C_mips	= yuv2rgb.c
 SRC_C		= $(SRC_C_$(ARCH))
 
 include $(L4DIR)/mk/lib.mk

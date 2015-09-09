@@ -26,3 +26,18 @@ bfd_getl32 (const void *p)
   v |= (unsigned long) addr[3] << 24;
   return v;
 }
+
+bfd_vma
+bfd_getb16 (const void *p)
+{
+  const bfd_byte *addr = p;
+  return (addr[0] << 8) | addr[1];
+}
+
+bfd_vma
+bfd_getl16 (const void *p)
+{
+  const bfd_byte *addr = p;
+  return (addr[1] << 8) | addr[0];
+}
+

@@ -1,0 +1,19 @@
+# vim:set ft=make:
+
+rel2abs	= $(foreach f, $(1),$(shell cd $(f); pwd))
+
+LIBKARMA_srcdir    := $(strip $(call rel2abs, $(srcdir)))
+LIBKARMA_VPATH_abs := $(call rel2abs, $(VPATH_LIBKARMA))
+
+$(LIBKARMA): FORCE
+	$(VERBOSE)if [ -e $(dir $@) ]; then true; else mkdir -p $(dir $@); fi
+	$(MAKE_MESSAGE)
+	$(VERBOSE)$(MAKE) -C karma	 		\
+	  -f $(LIBKARMA_srcdir)/lib/karma/Makefile 	\
+	  srcdir=$(LIBKARMA_srcdir) 			\
+	  objbase=$(objbase) 				\
+	  VERBOSE="$(VERBOSE)" 				\
+	  OBJECTS="$(OBJECTS_LIBKARMA)" 			\
+	  TARGET="$(LIBKARMA)" 				\
+	  VPATH_LIBKARMA="$(LIBKARMA_VPATH_abs)" 		\
+	  PRIVATE_INCDIR="$(LIBKARMA_srcdir)/lib/karma $(PRIVATE_INCDIR)"

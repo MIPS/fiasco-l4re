@@ -6,7 +6,7 @@ public:
   static bool is_mapped(void const *addr);
 };
 
-IMPLEMENTATION[ia32|ux|amd64]:
+IMPLEMENTATION[ia32|ux|amd64|mips32]:
 
 #include "kmem.h"
 

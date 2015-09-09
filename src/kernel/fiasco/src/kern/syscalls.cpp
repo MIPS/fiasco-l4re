@@ -1,5 +1,3 @@
-IMPLEMENTATION:
-
 #include "thread_object.h"
 #include "thread_state.h"
 #include "std_macros.h"
@@ -29,7 +27,6 @@ IMPLEMENT void FIASCO_FLATTEN sys_ipc_wrapper()
   else
     f->tag(curr->commit_error(utcb, L4_error::Not_existent));
 }
-
 
 //---------------------------------------------------------------------------
 IMPLEMENTATION [debug]:

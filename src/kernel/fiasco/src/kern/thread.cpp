@@ -77,7 +77,7 @@ public:
 
   enum Vcpu_ctl_flags
   {
-    Vcpu_ctl_extendet_vcpu = 0x10000,
+    Vcpu_ctl_extended_vcpu = 0x10000,
   };
 
 

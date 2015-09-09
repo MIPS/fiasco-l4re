@@ -1,0 +1,174 @@
+HOWTO for building an SMP Fiasco kernel to run Karma VMMs on different cpus.
+
+Updated Sep 25, 2014
+
+Overview
+========
+
+The Fiasco kernel needs to be rebuilt with Multi-core Processing enabled. L4Re
+can be rebuilt as usual. Karma can optionally be started with a cpu affinity
+mask parameter to allow multiple VMs to run on separate cpus.
+
+It is recommended to maintain separate smp and single processor build
+directories, both built from the same Fiasco/L4Re source tree.
+
+
+
+Building an SMP Fiasco Kernel
+=================================================================
+
+ Change to Fiasco directory containing top-level Makefile
+   cd src/kernel/fiasco
+
+ It is recommended to create a new Fiasco smp build directory that is separate
+ from the one used to build the host Fiasco image, i.e. <build_smp_fiasco> at
+ top level (or elsewhere)
+   make BUILDDIR=../../../build-smp/fiasco
+ 
+ Configure Fiasco from the default karma smp vz configuration template; this will
+ choose SMP malta as the target platform.
+   cp src/templates/globalconfig.out.mips32-malta-smp-vz <build_smp_fiasco>/globalconfig.out
+
+ Run make menuconfig to change the default number of SMP cores if desired
+ (subject to platform limitations).
+   CONFIG_MP_MAX_CPUS=8
+
+ Build Fiasco from <build_smp_fiasco> as per HOWTO.l4re
+
+
+
+Building the L4 Runtime Environment for the SMP platform
+==============================================================
+
+ L4Re is built as usual but it is recommended to create a new L4Re build
+ directory <build_smp_l4>.
+ Choose the malta platform to match the Fiasco kernel config.
+   cd src/l4
+   make B=../../build-smp/l4
+   mkdir ../../build-smp/l4/images
+ 
+ Build L4Re from <build_smp_l4> as per HOWTO.l4re
+
+
+
+Configuring SMP build Bootstrap Search Paths and different ELF Filename
+=========================================================
+
+ Create a Makeconf.boot file in the <build_smp_l4>/conf directory instead of
+ the one in src/l4/conf to customize and select the correct paths for the smp
+ build.
+   mkdir <build_smp_l4>/conf
+   touch <build_smp_l4>/conf/Makeconf.boot
+
+ Change the default bootstrap filename using BOOTSTRAP_ELF_NAME.
+
+ Create Makeconf.boot changing the default bootstrap ELF filename (for easier
+ selection within the IASim simulator) and setting search paths to find the
+ build-smp fiasco kernel:
+
+   BOOTSTRAP_ELF_NAME    = bootstrap_smp.elf
+   BOOTSTRAP_SEARCH_PATH := $(L4DIR_ABS)/../../build-smp/fiasco
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build-smp/l4/images
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/config
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/files
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/io/config
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/conf/examples
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/examples/sys/migrate
+   BOOTSTRAP_MODULES_LIST = $(L4DIR_ABS)/conf/modules.list
+
+Create a SMP build Bootstrap ELF Image
+======================================
+
+ Create the SMP build containing SMP Fiasco/L4Re and application, specifying the
+ application entry point as usual E=<entry_point>.
+
+   cd <build_smp_l4>
+   make
+   make E=ex_thread_migrate S=bootstrap
+
+ The resulting SMP build binary and a few aliases are located under images.
+
+   <build_smp_l4>/images/bootstrap_smp.elf (if BOOTSTRAP_ELF_NAME was set) OR
+   <build_smp_l4>/images/bootstrap.elf
+   <build_smp_l4>/images/bootstrap_ex_thread_migrate
+   <build_smp_l4>/images/bootstrap_ex_thread_migrate.elf
+
+ The bootstrap.elf image (or BOOTSTRAP_ELF_NAME) always refers to the last built
+ ELF image and is useful to use in scripts. Using BOOTSTRAP_ELF_NAME helps to
+ reduce confusion with the single processor bootstrap.elf file.
+
+ It is recommended to check the output of the bootstrap module linking to ensure
+ that the modules are being loaded from the correct search paths.
+
+
+
+Specifying cpu affinity in Fiasco SMP systems
+=============================================
+
+ The Fiasco kernel does not make cpu migration choices, this choice is left to
+ the user space application.
+
+ For C and C++ examples of how to specify cpu affinity see:
+
+   ex_thread_migrate: source in pkg/examples/sys/migrate/thread_migrate.cc
+   ex_shmc_task: source in pkg/examples/libs/shmc/cons.c
+
+
+
+Specifying cpu affinity for Karma VMs
+=====================================
+
+ For karma there is a --affinity_mask config options that specifies which cpus
+ the guest VM is allowed to run on. Multiple cpus may be specified but the
+ Fiasco kernel at this time will choose only one online cpu. Each new thread
+ must set its own cpu affinity, the affinity is not inherited from the parent
+ thread. The JDB debugger may be used to inspect which cpu a thread is running
+ on.
+
+ The --virtual_cpus option should be omitted or set to 1. Handling more than one
+ virtual cpu inside the guest VM is not supported (untested).
+
+
+
+Loading and Running
+===================
+
+ # Running on IASim malta platform emulation
+ The <build_smp_l4>/images/bootstrap_smp.elf binary can be loaded into the IASim malta platform.
+
+ Use the base-0 pcores attribute to specify the number of cores visible to the
+ platform. i.e. for 4 cores set
+   Attributes.GCR_PCORES = 3
+
+ For proper JDB operation be sure to set
+   Peripherals.uart0.Attributes.charmode = 1
+
+ Refer to the sample malta-board/linux/fiasco-P5600.cfg file if available.
+ 
+
+
+Example directory layout
+========================
+
+ fiasco.git/
+ |-- build
+ |   |-- fiasco
+ |   `-- l4
+ |   |   |-- conf/Makeconf.boot
+ |   |   `-- images
+ |   `-- linux
+ |-- build-smp
+ |   |-- fiasco
+ |   `-- l4
+ |       |-- conf/Makeconf.boot
+ |       `-- images
+ `-- src
+     |-- kernel
+     |   `-- fiasco
+     `-- l4
+     |   |-- conf/modules.list
+     |   `-- pkg
+     `-- linux
+

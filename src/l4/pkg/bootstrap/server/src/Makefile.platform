@@ -43,3 +43,10 @@ else
 SUPPORT_CC_x86-pc              := platform/x86_efi_pc.cc
 SUPPORT_CC_amd64-pc            := platform/x86_efi_pc.cc
 endif
+
+# mips
+SUPPORT_CC_mips-malta          := platform/malta.cc
+SUPPORT_CC_mips-sead3          := platform/sead3.cc
+SUPPORT_CC_mips-karma_guest    := platform/karma_guest.cc
+DRV_LIBS_mips-karma_guest      := -lkarma
+REQUIRES_LIBS_mips-karma_guest := karmalib

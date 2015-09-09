@@ -1,0 +1,3 @@
+provides: libtee_clnt
+requires: stdlibs l4re
+Maintainer:

@@ -37,9 +37,19 @@
  * Register numbers.
  */
 
+#if (defined(ARCH_mips) && defined(L4INPUT))
+#define MALTA_SYS_IOBASE        0x18000000 // KYMA TODO cleanup
+#define I8042_REG_BASE		MALTA_SYS_IOBASE
+#warning "KYMA ARCH_mips malta iobase hardcoded @ 0x18000000 in input/serio/i8042-io.h"
+static l4_addr_t i8042_ctrlbase_virt;
+#define I8042_COMMAND_REG	(i8042_ctrlbase_virt + 0x64)
+#define I8042_STATUS_REG	(i8042_ctrlbase_virt + 0x64)
+#define I8042_DATA_REG		(i8042_ctrlbase_virt + 0x60)
+#else
 #define I8042_COMMAND_REG	0x64
 #define I8042_STATUS_REG	0x64
 #define I8042_DATA_REG		0x60
+#endif
 
 static inline int i8042_read_data(void)
 {
@@ -74,6 +84,11 @@ static inline int i8042_platform_init(void)
 	if (!request_region(I8042_COMMAND_REG, 1, "i8042"))
 		return -1;
 #endif
+#if (defined(ARCH_mips) && defined(L4INPUT))
+	i8042_ctrlbase_virt = (l4_addr_t)request_region(I8042_REG_BASE, 8, "i8042");
+	if (!i8042_ctrlbase_virt)
+		return -1;
+#endif
 
         i8042_reset = 1;
 
@@ -88,6 +103,12 @@ static inline int i8042_platform_init(void)
 
 static inline void i8042_platform_exit(void)
 {
+#if (defined(ARCH_mips) && defined(L4INPUT))
+	if (i8042_ctrlbase_virt) {
+		release_region(i8042_ctrlbase_virt, 8);
+		return;
+	}
+#endif
 #if !defined(__sh__) && !defined(__alpha__) && !defined(CONFIG_PPC64)
 	release_region(I8042_DATA_REG, 16);
 #endif

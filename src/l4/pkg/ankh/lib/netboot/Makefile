@@ -1,7 +1,7 @@
 PKGDIR ?= ../..
 L4DIR ?= $(PKGDIR)/../..
 
-SYSTEMS = x86-l4f arm-l4f
+SYSTEMS = x86-l4f arm-l4f mips-l4f
 
 # the name of your library
 TARGET	= libnetboot.a

@@ -90,8 +90,13 @@ Kernel_thread::init_workload()
   // create the boot task
   //
 
+#ifdef CONFIG_PAGE_SIZE_4KB
   Task *boot_task = Task::create<Task>(Ram_quota::root,
       L4_fpage::mem(Mem_layout::Utcb_addr, Config::PAGE_SHIFT+2));
+#else
+  Task *boot_task = Task::create<Task>(Ram_quota::root,
+      L4_fpage::mem(Mem_layout::Utcb_addr, Config::PAGE_SHIFT));
+#endif
 
   assert_opt (boot_task);
 

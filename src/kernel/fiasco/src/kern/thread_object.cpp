@@ -474,7 +474,7 @@ Thread_object::sys_vcpu_control(L4_fpage::Rights, L4_msg_tag const &tag,
   if (vcpu)
     {
       Mword size = sizeof(Vcpu_state);
-      if (utcb->values[0] & 0x10000)
+      if (utcb->values[0] & Vcpu_ctl_extended_vcpu)
         {
           if (!arch_ext_vcpu_enabled())
             return commit_result(-L4_err::ENosys);

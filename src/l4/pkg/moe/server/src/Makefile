@@ -2,7 +2,7 @@ PKGDIR		?= ../..
 L4DIR		?= $(PKGDIR)/../..
 
 TARGET		= moe
-DEFAULT_RELOC	= 0x0140000
+DEFAULT_RELOC	= 0x00140000
 RELOC_PHYS      = y
 SRC_CC		= main.cc page_alloc.cc dataspace.cc dataspace_cont.cc \
                   dataspace_annon.cc globals.cc \
@@ -25,6 +25,7 @@ LIBS           += -L$(OBJ_DIR)/../libgc/OBJ-$(SYSTEM)
 EXTRA_LIBS     := -ll4sys-direct -lmoe_gc
 DEFINES        += -DL4_CXX_NO_EXCEPTION_BACKTRACE -DL4_MINIMAL_LIBC
 LDFLAGS        += --entry=_real_start
+OPTS	        = -g # XXXKYMA for correct inline function
 
 
 include $(L4DIR)/mk/prog.mk

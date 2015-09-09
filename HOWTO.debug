@@ -1,0 +1,97 @@
+HOWTO for debugging L4Re applications
+
+### Debugging with JDB:
+
+Build the Fiasco kernel with JDB kernel debugger and debugging over serial line
+enabled (make menuconfig). Optionally enable extended logging as well. Make sure
+-serial_esc options is enabled as a flag to fiasco in modules.list (Note that
+mips Fiasco kernels automatically add this option if serial debugging is
+enabled).
+
+Using JDB to determine system state at runtime.
+
+Press <esc> in the serial console to enter JDB , 'h' for help.  A lot of system
+information is available but not a lot of documentation about what the different
+fields mean. Reading the jdb source code is often necessary.
+
+Access JDB state at specific points in the program.
+
+See l4sys kdebug.h and ktrace.h in headers <l4/sys/kdebug.h> and
+<l4/sys/ktrace.h>
+
+- enter_kdebug
+  Use enter_kdebug("<string>") to drop into the JDB debugger from user land code
+  and examine kernel objects such as task and thread ready/present list and thread
+  priorities.
+
+- fiasco_tbuf_log
+- fiasco_tbuf_log_3val
+  Use these trace buffer logs to add entries to the JDB trace buffer. Unlike
+  regular logs or printfs these can be useful to put trace events into context
+  amongst built-in kernel trace events.
+
+### Debugging with Imperas mpd.exe
+
+mpd supports many gdb commands as well as some extra tcl commands enabled in the
+VZ processor model.
+
+Useful gdb commands:
+
+- set itrace on/off
+- set itrace on registers
+  Enable instruction tracing in the simulator. Slows down execution, produces a
+  lot of output.
+
+- view : See all the tcl commands supported by the model
+
+- view mode : Determine root or guest mode.
+
+- view COP0.Root/COP0.Guest : Dump cop0 registers
+
+- event modeswitch : break when processor switches between
+  kernel/user/guest/root mode. Unfortunately a bug prevents deleting modeswitch
+  events once they have been enabled.
+
+- tcl mipsTLBDumpRoot/mipsTLBDumpGuest
+
+Working with symbol files.
+
+  Symbol files can be sourced from gdb, i.e.:
+    symbol-file /<path>/fiasco.git/build/fiasco/fiasco.image
+    symbol-file /<path>/fiasco.git/build/l4/bin/mips_/l4f/ned
+    symbol-file /<path>/fiasco.git/build/l4/bin/mips_/l4f/karma
+
+  When working in multiple address spaces (whether in different L4 user tasks,
+  or between VZ Root/Guest) it is necessary to be aware of the context in which
+  breakpoints are set because multiple address spaces may contain a given
+  address and cause symbol clashes. If a breakpoint is hit and the backtrace
+  contains garbage, the wrong symbol context is being used.
+  
+  There is no a-priori way to match a context to a symbol file. One technique is
+  to view COP0.Root, examine the ASID field of EntryHi and match it to the ASID
+  assigned to a task (this can be seen in JDB tcb dumps).
+
+Setting Guest vs Root breakpoints.
+  Guest breakpoints need to be set while the processor is running in guest mode
+  otherwise breakpoint address matching will be using Root context addresses. A
+  technique that can be used to ensure the program is in Guest context is to
+  break on the kernel's entry to the guest. Here is a sample gdb script:
+
+    symbol-file /<path>/fiasco.git/build/fiasco/fiasco.image
+    b resume_to_vz_guest_exit
+    c
+    c
+    dis
+    stepi
+    view mode
+    symbol-file /<path>/fiasco.git/build/linux/vmlinux
+    b *kernel_entry+0x10
+
+
+Single stepping from VZ guest back into root.
+  The questions is how to continue stepping in guest context again where
+  exection left off?  A technique that can be used is to view COP0.Root and set
+  a breakpoint at the Root.EPC address (or address +4,8) that caused the
+  exception. Most times continuing execution will trap in the guest when the
+  root ERETs back to guest.
+

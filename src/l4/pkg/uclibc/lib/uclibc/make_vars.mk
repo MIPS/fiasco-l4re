@@ -30,6 +30,7 @@ UCLIBC_ARCH_arm   := arm
 UCLIBC_ARCH_amd64 := x86_64
 UCLIBC_ARCH_ppc32 := powerpc
 UCLIBC_ARCH_sparc := sparc
+UCLIBC_ARCH_mips  := mips
 
 UCLIBC_ARCH       := $(UCLIBC_ARCH_$(BUILD_ARCH))
 

@@ -255,7 +255,7 @@ Jdb_pcm::wait_for_escape(Console *cons)
 }
 
 
-IMPLEMENTATION[arm || ppc32 || sparc]:
+IMPLEMENTATION[arm || ppc32 || sparc || mips32]:
 
 #include "processor.h"
 

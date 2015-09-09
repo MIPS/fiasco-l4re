@@ -11,6 +11,7 @@
 #include <l4/re/log-sys.h>
 #include <l4/sys/kdebug.h>
 #include <l4/cxx/minmax>
+#include <l4/bid_config.h>
 
 #include "globals.h"
 #include "log.h"
@@ -118,11 +119,12 @@ Moe::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
   while (len_msg > 0 && msg[0])
     {
+#ifndef CONFIG_PLATFORM_TYPE_karma_guest
       if (color())
         ob.printf("\033[%s3%dm", (color() & 8) ? "01;" : "", (color() & 7));
       else
-        ob.printf("\033[0m");
-
+	ob.printf("\033[0m");
+#endif 
       if (last_log != this)
         {
           if (last_log != 0)
@@ -147,10 +149,12 @@ Moe::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
       if (i < (long)len_msg && msg[i] == '\n')
         {
+#ifndef CONFIG_PLATFORM_TYPE_karma_guest
           if (color())
             ob.printf("\033[0m\n");
           else
-            ob.printf("\n");
+#endif
+       ob.printf("\n");
           _in_line = false;
           last_log = 0;
           ++i;
@@ -164,10 +168,10 @@ Moe::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
       msg += i;
       len_msg -= i;
     }
-
+#ifndef CONFIG_PLATFORM_TYPE_karma_guest
   if (_in_line && color())
     ob.printf("\033[0m");
-
+#endif
   // and finally done
   return -L4_ENOREPLY;
 }

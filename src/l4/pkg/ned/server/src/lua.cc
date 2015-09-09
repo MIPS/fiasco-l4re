@@ -24,6 +24,14 @@
 #include <readline/readline.h>
 #endif
 
+#define USE_LUA_PRIO_OPTION
+#ifdef USE_LUA_PRIO_OPTION
+#include <l4/re/env>
+#include <l4/sys/scheduler>
+#include <pthread-l4.h>
+#include <stdlib.h>
+#endif
+
 #include "lua_cap.h"
 #include "lua.h"
 
@@ -60,10 +68,34 @@ static const luaL_Reg libs[] =
   { NULL, NULL }
 };
 
-static char const *const options = "+i";
+static char const *const options = "+ip:";
 static struct option const loptions[] =
 {{"interactive", 0, NULL, 'i' },
+ {"lua-prio", required_argument, NULL, 'p' },
  {0, 0, 0, 0}};
+
+static void set_lua_prio(const char* arg)
+{
+#ifndef USE_LUA_PRIO_OPTION
+  (void)arg;
+  fprintf(stderr, "Support for setting Lua priority not compiled in.\n");
+#else
+  unsigned long lua_prio = strtoul(arg, NULL, 0);
+
+  // error check
+  if (lua_prio == 0)
+    return;
+  if (lua_prio == ULONG_MAX)
+    return;
+
+  // range check, prio 0 is ignored
+  if ((lua_prio > L4_SCHED_MIN_PRIO) && (lua_prio <= L4_SCHED_MAX_PRIO))
+    {
+      l4_sched_param_t sp = l4_sched_param(lua_prio);
+      L4Re::Env::env()->scheduler()->run_thread(L4::Cap<L4::Thread>(pthread_getl4cap(pthread_self())), sp);
+    }
+#endif
+}
 
 int lua(int argc, char const *const *argv)
 {
@@ -81,6 +113,7 @@ int lua(int argc, char const *const *argv)
       switch (opt)
 	{
 	case 'i': interactive = true; break;
+	case 'p': set_lua_prio(optarg); break;
 	default: break;
 	}
     }

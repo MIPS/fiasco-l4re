@@ -86,7 +86,7 @@ Device::request_resource(Resource *r)
 
   if (!p->request_child_resource(r, this))
     {
-#if 0
+#if EXTRA_VERBOSE_DEBUG
       printf("WARNING: could not request resource in parent resource\n");
       r->dump();
 #endif
@@ -265,7 +265,7 @@ Generic_device::request_child_resource(Resource *r, Device *cld)
 	  // If there is no proper resource provided by
 	  // ourselves that fits resource r, than try to
 	  // go up the hierarchy to our parent node
-#if 0
+#if EXTRA_VERBOSE_DEBUG
 	  printf("try parent resource request...\n");
 	  r->dump();
 #endif

@@ -444,8 +444,26 @@ Irq_sender::transfer_msg(Receiver *recv)
 {
   Syscall_frame* dst_regs = recv->rcv_regs();
 
-  // set ipc return value: OK
-  dst_regs->tag(L4_msg_tag(0));
+  // Fix L4 vcpu_resume_commit api which breaks with Fiasco config::Irq_shorcut.
+  //     
+  // In case of Fiasco Kernel with config::Irq_shortcut, Irqs events may be delivered
+  // directly instead of via ipc messages. This breaks the vcpu_resume_commit API
+  // which no longer returns 1 to indicate a pending ipc message containing the
+  // triggered Irq event.
+  // 
+  // As a workaround Fiasco has been changed to mark the tag label with L4_PROTO_IRQ
+  // so that this situation can be detected. The tag label must be cleared before the
+  // next vcpu_resume_commit call to prevent spurious Irq events from being reported.
+  // 
+  // Note: Although there are no known issues, it is possible this workaround
+  // interferes with some other L4 applications that expect a zeroed out tag label or
+  // which do not clear the label.
+  if (Config::Irq_shortcut)
+    // set ipc return value: OK, proto Label_irq
+    dst_regs->tag(L4_msg_tag(0, 0, 0, L4_msg_tag::Label_irq));
+  else
+    // set ipc return value: OK
+    dst_regs->tag(L4_msg_tag(0));
 
   // set ipc source thread id
   dst_regs->from(_irq_id);

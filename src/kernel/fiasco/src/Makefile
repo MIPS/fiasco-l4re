@@ -181,6 +181,7 @@ source:
 
 
 BSP_DIR            := $(srcdir)/kern/arm/bsp $(srcdir)/kern/ppc32/bsp $(srcdir)/kern/sparc/bsp
+BSP_DIR		   += $(srcdir)/kern/mips32/bsp
 KCONFIG_FILE       := Kconfig
 KCONFIG_SRC_FILE   := $(srcdir)/Kconfig
 KCONFIG_BSP_FILES  := $(shell find $(BSP_DIR) -name Kconfig -follow -print)

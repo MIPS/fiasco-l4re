@@ -69,7 +69,9 @@ public:
 bool
 Root_mmio_rs::request(Resource *parent, Device *, Resource *child, Device *)
 {
-  //printf("request resource at root level: "); child->dump();
+#if EXTRA_VERBOSE_DEBUG
+  printf("request resource at root level: "); child->dump();
+#endif
   if (Phys_space::space.alloc(Phys_space::Phys_region(child->start(), child->end())))
     {
       child->parent(parent);
@@ -92,9 +94,9 @@ Root_mmio_rs::alloc(Resource *parent, Device *, Resource *child, Device *,
   Phys_space::Phys_region phys = Phys_space::space.alloc(child->size(), align);
   if (!phys.valid())
     {
-#if 0
+#if EXTRA_VERBOSE_DEBUG
       printf("ERROR: could not reserve physical space for resource\n");
-      r->dump();
+      child->dump();
 #endif
       child->disable();
       return false;

@@ -1,0 +1,30 @@
+=== Getting started with the MIPS port of Fiasco.OC and L4Re ===
+
+The following HOWTO files pertain to these repositories:
+
+    https://github.com/MIPS/fiasco-l4re.git
+    https://github.com/MIPS/karma.git
+    https://github.com/MIPS/karma-linux-mti.git
+
+Manual build instructions:
+
+Step 1) HOWTO.fiasco-l4re - How to get started building and running Fiasco.OC +
+L4 Runtime Environment for MIPS.
+
+Step 2) HOWTO.karma - How to build the Karma Virtual Machine Monitor to run a
+guest OS in a virtual machine on Fiasco.OC + L4Re.
+
+Step 3) HOWTO.karma-linux - How to build a para-virtualized Karma Linux guest
+OS to use with the Karma VMM.
+
+
+Automated script:
+
+do_setup_and_build.sh - Script to setup, git clone, checkout and build
+Fiasco/L4Re with Karma VMM, Linux and Fiasco guest VMs.
+
+# This script uses HTTPS to clone from GitHub. Consider caching your GitHub
+# password in Git in order to avoid having to enter it manually during the
+# script execution. Or alternatively, change to using SSH. See:
+#
+# https://help.github.com/articles/caching-your-github-password-in-git/#platform-linux

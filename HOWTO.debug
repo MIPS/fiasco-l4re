@@ -66,7 +66,7 @@ Working with symbol files.
   breakpoints are set because multiple address spaces may contain a given
   address and cause symbol clashes. If a breakpoint is hit and the backtrace
   contains garbage, the wrong symbol context is being used.
-  
+
   There is no a-priori way to match a context to a symbol file. One technique is
   to view COP0.Root, examine the ASID field of EntryHi and match it to the ASID
   assigned to a task (this can be seen in JDB tcb dumps).

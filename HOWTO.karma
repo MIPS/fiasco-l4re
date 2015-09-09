@@ -1,42 +1,36 @@
-HOWTO for building and running the MIPS port of Karma and Karma Linux Guest VM.
+HOWTO for building and running the MIPS port of the Karma virtual machine
+monitor (VMM) on the Fiasco.OC microkernel.
 
-Updated: Jun 3, 2015
+Updated: Jul 21, 2015
 
-Setup and obtain Karma VMM and Karma Linux
-============================================
+Setup and obtain Karma VMM
+==========================
 
- First step, follow the setup and build instructions in HOWTO.l4re for the
- Fiasco/L4Re build.  Next, obtain Karma and Karma Linux with para-virtualization
- for the Guest VM.
- 
+ First step, follow the setup and build instructions in HOWTO.fiasco-l4re for
+ the Fiasco/L4Re build.  For these instructions let the Fiasco/L4Re git
+ directory be called <fiasco_l4re_dir>.
+
+ Next, obtain Karma.  The Karma VMM project is hosted at:
+   https://github.com/MIPS/karma.git
+
+ Put the Karma VMM project into the L4Re pkg directory under <fiasco_l4re_dir>.
  For this setup <local_branch> is an arbitrary name and can match the
- <remote_branch> if desired.  <remote_branch> is one of:
-   mips-next     - newer mips fiasco port based on upstream svn r67
-   devel-mips    - initial mips fiasco port based on upstream svn r54
- 
- Put the Karma VMM project into L4Re pkg directory
-   cd <path_to_workdir>/fiasco.git/src/l4/pkg
-   git clone git://<path_to_repository>/karma.git karma
+ <remote_branch> if desired.  Clone the repository and create a remote-tracking
+ branch:
+   cd <fiasco_l4re_dir>/src/l4/pkg
+   git clone https://github.com/MIPS/karma.git karma
    cd ./karma
-   git branch --track <local_branch> origin/<remote_branch>
-   git checkout <local_branch>
- 
- Put the Karma Linux project under the fiasco.git src directory and create a
- remote-tracking branch:
-   cd <path_to_workdir>/fiasco.git/src
-   git clone --branch karma_mips_3.10.14 --single-branch git://<path_to_repository>/linux-mti.git linux
-   git branch --track <local_branch> origin/karma_mips_3.10.14
+   git branch --track <local_branch> origin/master
    git checkout <local_branch>
 
- You should now have the Karma VMM and Karma Linux under fiasco.git:
-   fiasco.git/src/l4/pkg/karma
-   fiasco.git/src/linux
+ You should now have the Karma VMM under <fiasco_l4re_dir>:
+   <fiasco_l4re_dir>/src/l4/pkg/karma
 
 
 
 Building Karma
 ==============
- 
+
  Change to the L4Re build directory <build_l4>. Karma is built along with the
  rest of the L4Re packages.
 
@@ -48,63 +42,13 @@ Building Karma
 
 
 
-Building Karma Linux the first time
-===================================
- 
- Two para-virtualized karma linux defconfigs are provided. The configurations
- are able to co-exist when running side-by-side in two karma VMs.
-
-   karma_defconfig        - PV linux with karma-aware devices
-   karma_simple_defconfig - PV linux with limited subset of karma-aware devices
-
- Create the Karma Linux build directory <build_linux> then setup make to use the
- build directory and make the default karma kernel configuration.
-   cd fiasco.git
-   cd ./src/linux
-   mkdir ../../build/linux
-   make O=../../build/linux karma_defconfig
-   cd ../../build/linux (aka <build_linux>)
-
- Use the linux build directory <build_linux> for subsequent builds. If make is
- inadvertently run from fiasco.git/src/linux, make mrproper will need to be run
- from the src/linux directory to clean it up.
-
- Set the full path to the Karma package in the kernel config options and change
- CONFIG_KARMA_PKG_PATH="/path/to/l4/pkg/karma".
-   cd <build_linux>
-   make menuconfig
-
- Build Karma Linux.  Specify make -j for faster builds.
-   make -j2
-
-
-
-Building Karma linux-simple the first time
-==========================================
-
- Building linux-simple follows the linux build steps with some modifications:
-   cd fiasco.git
-   cd ./src/linux
-   mkdir ../../build/linux-simple
-   make O=../../build/linux-simple karma_simple_defconfig
-   cd ../../build/linux-simple (aka <build_linux_simple>)
-
- As a final step create a symlink to vmlinux and <build_linux_simple> to the
- BOOTSTRAP_SEARCH_PATH in <build_l4>/conf/Makeconf.boot.
-   cd <build_linux_simple>
-   ln -s vmlinux vmlinux-simple
-
-   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
-
-
-
 Configuring L4 Search Paths
 ===========================
 
  Add Karma and Linux directories to the Makeconf.boot search paths as well as
  paths to any other modules specified under the karma entry point in
  src/l4/conf/modules.list.
- 
+
    BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux
    BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
    BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/pkg/karma/config
@@ -118,11 +62,12 @@ Configuring L4 Search Paths
 
 
 
-Configuring the Karma Linux Guest
-=================================
+Configuring the Karma and the Karma Guest OS
+============================================
 
- The Karma Linux guest VM takes its kernel command line options from the file
- karma/config/karma-mips.cfg. Karma options can also be set in this file.
+ The karma/config directory contains .cfg files which are included via
+ src/l4/conf/modules.list and are used to set Karma options and the Linux
+ cmdline. e.g. see karma/config/karma-mips.cfg.
 
 
 
@@ -142,10 +87,14 @@ Create a Bootstrap ELF Image with Karma and Karma Linux
    karma_sys        - Run karma VMM with 2 guest VMs running linux
    karma_fiasco     - Run karma VMM with guest VM running Fiasco.OC
    karma_fiasco_sys - Run karma VMM with 2 guest VMs running linux and Fiasco.OC
+   karma_paravirt   - Run karma VMM with guest VM running SMP linux
+   karma_smp_sys    - Run karma VMM with 3 guest VMs running SMP linux and 2 Fiasco.OC
 
- Specify E=<entry_point> to build an ELF executable. 
+ Specify E=<entry_point> to build an ELF executable.
 
    cd <build_l4>
+   make E=karma_hello S=bootstrap
+ or
    make E=karma S=bootstrap
 
  The resulting binary and a few aliases are located under images.
@@ -166,7 +115,7 @@ Loading and Running
 Example directory layout
 ========================
 
- fiasco.git/
+ <fiasco_l4re_dir>/
  |-- build
  |   |-- fiasco
  |   `-- l4

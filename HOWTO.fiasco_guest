@@ -1,6 +1,6 @@
 HOWTO for building Fiasco/L4Re as a Guest OS for the Karma VMM
 
-Updated Mar 31, 2015
+Updated: Jul 21, 2015
 
 Overview
 ========
@@ -33,12 +33,12 @@ Building the Fiasco Kernel as Guest OS for the Karma VMM platform
  build the host Fiasco image, i.e. <build_guest_fiasco> at top level (or
  elsewhere)
    make BUILDDIR=../../../build-guest/fiasco
- 
+
  Configure Fiasco from the default karma guest configuration template; this will
  choose karma as the target platform.
    cp src/templates/globalconfig.out.mips32-karma <build_guest_fiasco>/globalconfig.out
 
- Build Fiasco from <build-guest-fiasco> as per HOWTO.l4re
+ Build Fiasco from <build-guest-fiasco> as per HOWTO.fiasco-l4re
 
 
 
@@ -53,8 +53,8 @@ Building the L4 Runtime Environment for the Karma VMM platform
    mkdir ../../build-guest/l4/images
    cd ../../build-guest/l4
    make -j4
- 
- Build L4Re from <build-guest-l4> as per HOWTO.l4re
+
+ Build L4Re from <build-guest-l4> as per HOWTO.fiasco-l4re
 
  TROUBLESHOOTING: "Library dependencies missing: libkarma"
 

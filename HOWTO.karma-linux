@@ -1,0 +1,155 @@
+HOWTO for building and running the MIPS port of Karma Linux Guest VM with the
+Karma VMM on the Fiasco.OC microkernel.
+
+Updated: Jul 21, 2015
+
+Setup and obtain Karma Linux
+============================
+
+ First step, follow the setup and build instructions in HOWTO.fiasco-l4re for
+ the Fiasco/L4Re build.  For these instructions let the Fiasco/L4Re git
+ directory be called <fiasco_l4re_dir>.
+
+ Next, obtain Karma Linux with para-virtualization for the Guest VM.  The Karma
+ Linux project is hosted at:
+   https://github.com/MIPS/karma-linux-mti.git
+
+ For this setup <local_branch> is an arbitrary name and can match the
+ <remote_branch> if desired.  <remote_branch> is one of:
+   karma_mips_3.10.14 - supports linux UP guest, paravirtualized malta platform
+   karma_mips_4.0.4   - supports linux SMP guest, minimal paravirtualization
+
+ For this example the Karma Linux project is placed into the src directory of
+ <fiasco_l4re_dir>.  Clone the repository and create a remote-tracking branch:
+   cd <fiasco_l4re_dir>/src
+   git clone https://github.com/MIPS/karma-linux-mti.git linux
+   git branch --track <local_branch> origin/karma_mips_3.10.14
+   git checkout <local_branch>
+
+ You should now have the Karma Linux under <fiasco_l4re_dir>:
+   <fiasco_l4re_dir>/src/linux
+
+
+
+Building Karma Linux the first time
+===================================
+
+ Several para-virtualized karma linux defconfigs are provided.
+
+ For the karma_mips_3.10.14 branch supporting uni-processor guests, these two
+ configurations are able to co-exist when running side-by-side in two karma
+ VMs:
+
+   karma_defconfig        - PV linux with karma-aware devices
+   karma_simple_defconfig - PV linux with limited subset of karma-aware devices
+
+ For the karma_mips_4.0.4 branch supporting SMP guests the defconfig is:
+
+   karma_paravirt_defconfig - SMP linux with karma-aware serial console.
+
+ Create the Karma Linux build directory <build_linux> then setup make to use the
+ build directory and make the default karma kernel configuration.
+   cd <fiasco_l4re_dir>
+   cd ./src/linux
+   mkdir ../../build/linux
+   make O=../../build/linux karma_defconfig
+   cd ../../build/linux (aka <build_linux>)
+
+ Use the linux build directory <build_linux> for subsequent builds. If make is
+ inadvertently run from <fiasco_l4re_dir>/src/linux, make mrproper will need to be run
+ from the src/linux directory to clean it up.
+
+ Set the full path to the Karma package in the kernel config options and change
+ CONFIG_KARMA_PKG_PATH="/path/to/l4/pkg/karma".
+   cd <build_linux>
+   make menuconfig
+
+ Build Karma Linux.  Specify make -j for faster builds.
+   make -j2
+
+ As a final step add <build_linux> to the BOOTSTRAP_SEARCH_PATH in
+ <build_l4>/conf/Makeconf.boot.
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux
+
+
+
+Building Karma linux-simple the first time
+==========================================
+
+ Building linux-simple follows the linux build steps with some modifications:
+   cd <fiasco_l4re_dir>
+   cd ./src/linux
+   mkdir ../../build/linux-simple
+   make O=../../build/linux-simple karma_simple_defconfig
+   cd ../../build/linux-simple (aka <build_linux_simple>)
+
+ Create a symlink to vmlinux; giving the image a different name helps reduce
+ confusion and mistakes when selecting which linux to include in the L4Re
+ bootstrap image.
+   cd <build_linux_simple>
+   ln -s vmlinux vmlinux-simple
+
+ As a final step add <build_linux_simple> to the BOOTSTRAP_SEARCH_PATH in
+ <build_l4>/conf/Makeconf.boot.
+
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build/linux-simple
+
+
+
+Building Karma Linux with SMP support
+=====================================
+
+ The Karma Linux SMP configuration uses the linux/arch/mips/paravirt platform
+ rather than the linux/arch/mips/mach-virt platform. At this time the SMP linux
+ paravirt platform has more limited paravirtual device driver support than the
+ UP linux mach-virt platform.
+
+ First, follow the instructions in HOWTO.fiasco_smp to get an SMP enabled
+ kernel.  Next, to build an Karma Linux guest with SMP support checkout the
+ correct branch and build the karma_paravirt_defconfig:
+
+   git branch --track <local_branch> origin/karma_mips_4.0.4
+   git checkout <local_branch>
+
+ Building an SMP linux guest follows the linux build steps with some modifications:
+   cd <fiasco_l4re_dir>
+   cd ./src/linux
+   mkdir ../../build-smp/linux
+   make O=../../build-smp/linux karma_paravirt_defconfig
+   cd ../../build-smp/linux (aka <build_linux_smp>)
+
+ Create a symlink to vmlinux; giving the image a different name helps reduce
+ confusion and mistakes when selecting which linux to include in the L4Re
+ bootstrap image.
+   cd <build_linux_smp>
+   ln -s vmlinux vmlinux-paravirt
+
+ As a final step add <build_linux_smp> to the BOOTSTRAP_SEARCH_PATH in
+ <build_smp_l4>/conf/Makeconf.boot.
+
+   BOOTSTRAP_SEARCH_PATH += $(L4DIR_ABS)/../../build-smp/linux
+
+
+
+Specifying cpu affinity for Karma VMs
+=====================================
+
+ The Karma VMM takes a --affinity_mask config file option that specifies which
+ cpus the guest VM may run on. For non-SMP guests this can be used to allocate
+ one cpu per VM.  When combined with the --virtual_cpus option a Karma Linux
+ SMP guest can use multiple cpus.
+
+ Fiasco kernel itself will use only one online cpu and typically any thread
+ that the Karma VMM starts will inherit the affinity of its parent thread
+ unless explicitly changed within Karma.
+
+ See the existing .cfg files in karma/config for examples.
+
+
+
+Next step:
+==========
+
+ Follow the instructions in HOWTO.karma to include the Karma Linux guest VM
+ as a package into the Karma VMM L4Re bootstrap image.
+

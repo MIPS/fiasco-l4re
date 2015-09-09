@@ -1,0 +1,117 @@
+// vim: set ft=cpp :
+/**
+ * (c) 2014 Steffen Liebergeld <steffen.liebergeld@kernkonzept.com>
+ *
+ * This file is licensed under the terms of the GNU Lesser General
+ * Public License 2.1.
+ * See the file COPYING-LGPL-2.1 for details.
+ */
+#pragma once
+
+#include <l4/sys/capability>
+#include <l4/sys/err.h>
+#include <l4/sys/types.h>
+#include <l4/cxx/ipc_stream>
+#include <l4/re/inhibitor-sys.h>
+#include <l4/re/protocols>
+
+namespace L4Re {
+
+/**
+ * \brief Set of inhibitor locks, which inhibit specific actions when held.
+ *
+ * This interface provides access to a set of inhibitor locks, each determined
+ * by an ID that is specific to the Inhibitor object. Each individual lock
+ * shall prevent, a specific (implementation defined) action to be executed, as
+ * long as the lock is held.
+ *
+ * For example there can be an inhibitor lock to prevent a transition to
+ * suspend-to-RAM state and a different one to prevent shutdown.
+ *
+ * A client shall take an inhibitor lock if it needs to execute code
+ * before the action is taken. For example a lock-screen application shall grab
+ * an inhibitor lock for the suspend action to be able to lock the screen
+ * before the system goes to sleep.
+ *
+ * Inhibitor locks are usually closely related to specific events. Usually a
+ * server automatically subscribes a client holding a lock to the corresponding
+ * event. The server shall send the event to inform the client that an action
+ * is pending. Upon reception of the event, the client is supposed to release
+ * the corresponding inhibitor lock.
+ */
+class Inhibitor :
+  public L4::Kobject_t<Inhibitor, L4::Kobject, L4Re::Protocol::Inhibitor>
+{
+  L4_KOBJECT(Inhibitor)
+public:
+  enum
+  {
+    Name_max = 20 ///< The maximum length of a lock's name.
+  };
+
+  /**
+   * \brief Acquire a specific inhibitor lock
+   * \param id     ID of the inhibitor lock that the client intends to acquire
+   * \param reason the reason why you need the lock. Used for informing the
+   *               user or debugging.
+   * \param utcb   the UTCB to use for the message.
+   * \return 0 on success, -L4_ENODEV when the specified \a id does not exist
+   *                       (<0 in case of error).
+   */
+  long acquire(l4_umword_t id, char const *reason,
+               l4_utcb_t *utcb = l4_utcb())
+  {
+    L4::Ipc::Iostream s(utcb);
+    s << L4::Opcode(L4Re::Inhibitor_::Acquire);
+    s << id;
+    s << reason;
+    return l4_error(s.call(cap(), L4Re::Protocol::Inhibitor));
+  }
+
+  /**
+   * \brief Release a specific inhibitor lock
+   * \param id   the ID of the inhibitor lock to release.
+   * \param utcb the UTCB to use for the message.
+   * \return 0 on success, -L4_ENODEV when a lock with the given \a id does
+   *                       not exits (<0 in case of error).
+   */
+  long release(l4_umword_t id, l4_utcb_t *utcb = l4_utcb())
+  {
+    L4::Ipc::Iostream s(utcb);
+    s << L4::Opcode(L4Re::Inhibitor_::Release);
+    s << id;
+    return l4_error(s.call(cap(), L4Re::Protocol::Inhibitor));
+  }
+
+  /**
+   * \brief Get information for the next available inhibitor lock.
+   * \param name a pointer to a buffer for the name of the lock.
+   * \param len  the length of the available buffer (usually #Name_max is used)
+   * \param current_id the ID of the last available lock, use -1 to get the
+   *                   first lock.
+   * \param utcb the UTCB to use for the message.
+   * \return the ID of the next available lock if there is one (in this case
+   *         name shall contain the name of the inhibitor lock).
+   * \return -L4_ENODEV if there are no more locks
+   * \return any other negative failure value.
+   */
+  long next_lock_info(char *name, unsigned len, l4_mword_t current_id = -1,
+                      l4_utcb_t *utcb = l4_utcb())
+  {
+    L4::Ipc::Iostream s(utcb);
+    s << L4::Opcode(L4Re::Inhibitor_::Next_lock_info);
+    s << current_id;
+    long err = l4_error(s.call(cap(), L4Re::Protocol::Inhibitor));
+    if (err >= 0)
+      {
+        unsigned long sz = len;
+        l4_umword_t id;
+        s >> id;
+        s >> L4::Ipc::str_cp_in(name, sz);
+        return id;
+      }
+    return err;
+  }
+};
+
+}

@@ -1,0 +1,81 @@
+// vi:ft=c
+/**
+ * \page io Io, the Io Server
+ *
+ * The Io server handles all platform devices and resources such as I/O
+ * memory, ports (on x86) and interrupts, and grants access to those to
+ * clients.
+ *
+ * Upon startup Io discovers all platform devices using available means on
+ * the system, e.g. on x86 the PCI bus is scanned and the ACPI subsystem
+ * initialised. Available I/O resource can also be configured via
+ * configuration scripts.
+ *
+ * Io uses configuration can be considered as two parts:
+ *  - the description of the real hardware
+ *  - the description of virtual buses
+ *
+ * Both descriptions represent hierarchical (tree) structure of device nodes.
+ * Where each device has a set of resources attached to it. And a device that
+ * has child devices can be considered a bus.
+ *
+ * Hardware Description
+ * --------------------
+ *
+ * The hardware description represents the devices that are available on the
+ * particular platform including their resource descriptions, such as MMIO
+ * regions, IO-Port regions, IRQs, bus numbers etc.
+ *
+ * The root of the hardware devices is formed by a system bus device
+ * (accessible in the configuration via Io.system_bus()).
+ * As mentioned before, platforms that support methods for device discovery may
+ * populate the hardware description automatically, for example from ACPI. On
+ * platforms that do not have support for such methods you have to specify the
+ * hardware description by hand. A simple example for this is
+ * <tt>x86-legacy.devs</tt>.
+ *
+ * Virtual Bus Description
+ * -----------------------
+ *
+ * Each Io server client is provided with its own virtual bus which
+ * it can iterate to find devices. A virtual PCI bus may be a part
+ * of this virtual bus.
+ *
+ * \image html io-overview.png "IO Service Architecture Overview"
+ * \image latex io-overview.pdf "IO Service Architecture Overview"
+ *
+ * The Io server must be configured to create virtual buses for its
+ * clients.
+ *
+ * This is done with at least one configuration file
+ * specifying static resources as well as virtual buses for clients. The
+ * configuration may be split across several configuration files passed
+ * to Io through the command line.
+ *
+ * To allow clients access to a available devices, a virtual system bus needs
+ * to be created that lists the devices and their resources that should be
+ * available to that client. The names of the busses correspond to the
+ * capabilities given to Io in its launch configuration.
+ *
+ * A very simple configuration for Io could look like this:
+ *
+ * \include io/doc/example.io
+ *
+ * Each device supports a 'compatible' property. It is a list of compatibility
+ * strings. A client matches itself against one (or multiple) compatibility IDs
+ * and configures itself accordingly. All other device members are handled
+ * according to their type. If the type is a resource (Io.Res) it is added as a
+ * named resource. Note that resource names are truncated to 4 letters and are
+ * stored in the ID field of a l4vbus_resource_t. If the type is a device it is
+ * added as a child device to the current one. All other types are treated as a
+ * device property which can be used to configure a device driver. Right now,
+ * device properties are internal to Io only.
+ *
+ * Assigning clients PCI devices could look like this:
+ *
+ * \include io/doc/example_pci.io
+ *
+ * The CC numbers are PCI class codes. You can also use <tt>REV_</tt>,
+ * <tt>VEN_</tt>, <tt>DEV_</tt> and <tt>SUBSYS_</tt> to specify revision,
+ * vendor, device and subsystem with a hex number.
+ */

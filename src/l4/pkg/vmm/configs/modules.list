@@ -1,0 +1,18 @@
+
+entry arm-vmm
+kernel fiasco -serial_esc
+roottask moe rom/arm-vmm.ned
+module l4re
+module ned
+module cons
+module io
+module vmm
+module virtio-switch
+module virt-omap5.dtb
+module shell: echo $SRC_BASE_ABS/pkg/vmm/configs/vmm.lua
+module shell: echo $SRC_BASE_ABS/pkg/vmm/configs/bsp/omap5/io.cfg
+module shell: echo $SRC_BASE_ABS/pkg/vmm/configs/bsp/omap5/vm_hw.vbus
+module shell: echo $SRC_BASE_ABS/pkg/vmm/configs/vm_nohw.vbus
+module shell: echo $SRC_BASE_ABS/pkg/vmm/configs/arm-vmm.ned
+module shell: echo $ZIMAGE_FILE
+#module <path_to_ramdisk>/arm-image

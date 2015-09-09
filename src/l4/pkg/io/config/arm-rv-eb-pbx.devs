@@ -1,0 +1,85 @@
+-- vim:set ft=lua:
+
+-- ARM Realview PBX Platform
+
+local Res = Io.Res
+local Hw = Io.Hw
+
+Io.hw_add_devices
+{
+  CTRL = Hw.Device
+  {
+    hid = "System Control";
+    Res.mmio(0x10000000, 0x10000fff);
+  },
+
+  LCD = Hw.Device
+  {
+    hid = "AMBA PL110";
+    Res.mmio(0x10020000, 0x10020fff);
+    Res.irq(55);
+  },
+
+  KBD = Hw.Device
+  {
+    hid = "AMBA KMI Kbd";
+    Res.irq(52);
+    Res.mmio(0x10006000, 0x10006fff);
+  },
+
+  MOUSE = Hw.Device
+  {
+    hid = "AMBA KMI mou";
+    Res.mmio(0x10007000, 0x10007fff);
+    Res.irq(53);
+  },
+
+  GPIO0 = Hw.Device
+  {
+    hid = "AMBA PL061 dev0";
+    Res.mmio(0x10013000, 0x10013fff);
+    Res.irq(38);
+  },
+
+  GPIO1 = Hw.Device
+  {
+    hid = "AMBA PL061 dev1";
+    Res.mmio(0x10014000, 0x10014fff);
+    Res.irq(39);
+  },
+
+  COMPACTFLASH = Hw.Device
+  {
+    hid = "compactflash"; -- FIXME: should be something like "ARM RV FLASH"
+    Res.mmio(0x18000000, 0x1b000fff);
+    Res.irq(59);
+  },
+
+  AACI = Hw.Device
+  {
+    hid = "aaci";
+    Res.mmio(0x10004000, 0x10004fff);
+    Res.irq(51);
+  },
+
+  NIC = Hw.Device
+  {
+    hid = "smsc911x";
+    Res.mmio(0x4e000000, 0x4e000fff);
+    Res.irq(41);
+  },
+
+  USB = Hw.Device
+  {
+    hid = "usb";
+    Res.mmio(0x4f000000, 0x4fffffff);
+    Res.irq(61);
+  },
+
+  RTC = Hw.Device
+  {
+    hid = "rtc";
+    Res.mmio(0x10017000, 0x10017fff);
+    Res.irq(42);
+  }
+}

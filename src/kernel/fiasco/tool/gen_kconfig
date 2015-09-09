@@ -1,0 +1,65 @@
+#! /usr/bin/perl -W
+
+use strict;
+
+my $kconfig_src_file = shift;
+my $kconfig_obj_file = shift;
+
+my %pfs;
+foreach my $f (@ARGV) {
+  my $bsp_name;
+  $bsp_name = $1 if $f =~ /\/bsp\/([^\/]+)\//;
+  open(X, $f) || die "Cannot open $f: $!";
+  my $pf;
+  my $pfdescr;
+  my @pfselect;
+  my @pfdep;
+  while ($_=<X>) {
+    $pf       = $1 if /^\s*\#\s*PF:\s*(\S+)/;
+    $pfdescr  = $1 if /^\s*\#\s*PFDESCR:\s*(.+)/;
+    push(@pfselect, split(/\s+/, $1)) if /^\s*\#\s*PFSELECT:\s*(.+)/;
+    push(@pfdep,    split(/\s+/, $1)) if /^\s*\#\s*PFDEPENDS:\s*(.+)/;
+
+    if (/^\s*\#\s*PFCAN:\s*(.+)/)
+      {
+        push(@pfselect, split(/\s+/, $1));
+        print "WARN: $f:$.: PFCAN is deprecated, use PFSELECT\n";
+      }
+  }
+  $pfs{$pf}{file}      = $f;
+  $pfs{$pf}{desc}      = $pfdescr;
+  @{$pfs{$pf}{select}} = @pfselect;
+  @{$pfs{$pf}{dep}}    = @pfdep;
+  $pfs{$pf}{name}      = $bsp_name;
+  close X;
+}
+open(IN, "$kconfig_src_file") || die "Cannot open $kconfig_src_file: $!";
+open(OUT, ">$kconfig_obj_file") || die "Cannot open $kconfig_obj_file: $!";
+while ($_=<IN>) {
+  print OUT;
+  if (/^\s*\#\s*PF_INCLUDE\W/) {
+    foreach my $i (keys %pfs) {
+      print OUT "if PF_$i\n";
+      if (defined $pfs{$i}{name}) {
+	print OUT "config BSP_NAME\n	string\n";
+	print OUT "	depends on PF_$i\n";
+	print OUT "	default \"$pfs{$i}{name}\"\n";
+      }
+      print OUT "source \"$pfs{$i}{file}\"\nendif\n";
+    }
+  }
+  if (/^\s*\#\s*PF_CHOICE\W/) {
+    foreach my $i (keys %pfs) {
+      if (defined $pfs{$i}{desc}) {
+	print OUT "config PF_$i\n	bool \"$pfs{$i}{desc}\"\n";
+      } else {
+	print OUT "config PF_$i\n	bool \"$i Platform\"\n";
+      }
+      print OUT "	depends on $_\n" foreach (@{$pfs{$i}{dep}});
+      print OUT "	select $_\n" foreach (@{$pfs{$i}{select}});
+      print OUT "\n";
+    }
+  }
+}
+close IN;
+close OUT;

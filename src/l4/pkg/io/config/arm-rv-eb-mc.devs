@@ -1,0 +1,81 @@
+-- vim:set ft=lua:
+--
+-- (c) 2008-2009 Technische Universität Dresden
+-- This file is part of TUD:OS and distributed under the terms of the
+-- GNU General Public License 2.
+-- Please see the COPYING-GPL-2 file for details.
+
+-- multi-core EB (PB11MP)
+
+local Hw = Io.Hw
+local Res = Io.Res
+
+Io.hw_add_devices
+{
+  CTRL = Hw.Device
+  {
+    hid = "System Control";
+    Res.mmio(0x10000000, 0x10000fff);
+  },
+
+  LCD = Hw.Device
+  {
+    hid = "AMBA PL110";
+    Res.mmio(0x10020000, 0x10020fff);
+  },
+
+  KBD = Hw.Device
+  {
+    hid = "AMBA KMI Kbd";
+    Res.irq(39);
+    Res.mmio(0x10006000, 0x10006fff);
+  },
+
+  MOUSE = Hw.Device
+  {
+    hid = "AMBA KMI mou";
+    Res.mmio(0x10007000, 0x10007fff);
+    Res.irq(40);
+  },
+
+  GPIO0 = Hw.Device
+  {
+    hid = "AMBA PL061 dev0";
+    Res.mmio(0x10013000, 0x10013fff);
+    Res.irq(6);
+  },
+
+  GPIO1 = Hw.Device
+  {
+    hid = "AMBA PL061 dev1";
+    Res.mmio(0x10014000, 0x10014fff);
+    Res.irq(7);
+  },
+
+  COMPACTFLASH = Hw.Device
+  {
+    hid = "compactflash"; -- FIXME: should be "XXX flash" or something
+    Res.mmio(0x18000000, 0x180000ff);
+    Res.mmio(0x18000100, 0x180003ff);
+  },
+
+  AACI = Hw.Device
+  {
+    hid = "aaci";
+    Res.mmio(0x10004000, 0x10004fff);
+    Res.irq(32);
+  },
+
+  NIC = Hw.Device
+  {
+    hid = "smsc911x";
+    Res.mmio(0x4e000000, 0x4e000fff);
+    Res.irq(41);
+  },
+
+  MEM1 = Hw.Device
+  {
+    hid = "foomem";
+    Io.Mmio_data_space(0x10000, 0);
+  },
+}

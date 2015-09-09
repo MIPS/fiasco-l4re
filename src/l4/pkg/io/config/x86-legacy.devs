@@ -1,0 +1,38 @@
+-- vi:ft=lua
+
+local Res = Io.Res
+local Hw = Io.Hw
+
+Io.hw_add_devices
+{
+  P80 = Hw.Device
+  {
+    hid = "P80",
+    Res.io(0x80),
+  },
+
+  BIOS = Hw.Device
+  {
+    hid = "BIOS";
+    Res.mmio(0x0, 0xfff);
+    Res.mmio(0x9f000, 0x9ffff);
+    Res.mmio(0xc0000, 0xfffff);
+  },
+
+  VGA = Hw.Device
+  {
+    hid = "PNP0900";
+    Res.io(0x3b0, 0x3bf); -- MDA
+    Res.io(0x3c0, 0x3df); -- EGA/VGA
+    Res.io(0x1ce, 0x1d0); -- Vbox
+    Res.io(0x402, 0x402); -- QEMU Debug Port
+    Res.mmio(0xa0000, 0xbffff);
+  },
+
+  RTC = Hw.Device
+  {
+    hid = "PNP0B00";
+    Res.io(0x70, 0x71);
+  }
+}
+

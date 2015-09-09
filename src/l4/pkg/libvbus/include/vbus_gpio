@@ -1,0 +1,181 @@
+// vi:ft=cpp
+/*
+ * (c) 2011 Adam Lackorzynski <adam@os.inf.tu-dresden.de>
+ *     economic rights: Technische Universität Dresden (Germany)
+ *
+ * This file is part of TUD:OS and distributed under the terms of the
+ * GNU General Public License 2.
+ * Please see the COPYING-GPL-2 file for details.
+ */
+#pragma once
+
+#include <l4/vbus/vbus>
+#include <l4/vbus/vbus_gpio.h>
+
+namespace L4vbus {
+
+/**
+ * \brief A GPIO pin
+ * \ingroup l4vbus_gpio_module
+ *
+ */
+class Gpio_pin : public Device
+{
+public:
+  Gpio_pin(Device const &dev, unsigned pin)
+  : Device(dev), _pin(pin)
+  {}
+
+  /**
+   * \copydoc l4vbus_gpio_get()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int get() const
+  {
+    return l4vbus_gpio_get(_bus.cap(), _dev, _pin);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_set()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int set(int value) const
+  {
+    return l4vbus_gpio_set(_bus.cap(), _dev, _pin, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_setup()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int setup(unsigned mode, unsigned value) const
+  {
+    return l4vbus_gpio_setup(_bus.cap(), _dev, _pin, mode, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_config_pull()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int config_pull(unsigned mode) const
+  {
+    return l4vbus_gpio_config_pull(_bus.cap(), _dev, _pin, mode);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_config_pad()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int config_pad(unsigned func, unsigned value) const
+  {
+    return l4vbus_gpio_config_pad(_bus.cap(), _dev, _pin, func, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_config_get()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int config_get(unsigned func, unsigned *value) const
+  {
+    return l4vbus_gpio_config_get(_bus.cap(), _dev, _pin, func, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_to_irq()
+   * \note \a vbus, \a handle and \a pin are implicit
+   */
+  int to_irq() const
+  {
+    return l4vbus_gpio_to_irq(_bus.cap(), _dev, _pin);
+  }
+
+  /**
+   * \brief Get pin number
+   *
+   * \return GPIO pin number
+   */
+  unsigned pin() const { return _pin; }
+
+protected:
+  Gpio_pin() {}
+  unsigned _pin;
+};
+
+/**
+ * \brief A Gpio_module groups multiple GPIO pins together
+ * \ingroup l4bus_gpio_module
+ */
+class Gpio_module : public Device
+{
+public:
+  Gpio_module(Device dev)
+  : Device(dev)
+  {}
+
+  /**
+   * \brief A slice of the pins provided by this module.
+   *
+   * Data type to specify a selection of pins for the 'multi'
+   * methods.
+   */
+  struct Pin_slice
+  {
+    Pin_slice(unsigned offset, unsigned mask) : offset(offset), mask(mask) {}
+    unsigned offset, mask;
+  };
+
+  /**
+   * \copydoc l4vbus_gpio_multi_setup()
+   * \note \a vbus and \a handle are implicit
+   */
+  int setup(Pin_slice const &mask, unsigned mode, unsigned value) const
+  {
+    return l4vbus_gpio_multi_setup(_bus.cap(), _dev, mask.offset, mask.mask,
+                                   mode, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_multi_config_pad()
+   * \note \a vbus and \a handle are implicit
+   */
+  int config_pad(Pin_slice const &mask, unsigned func, unsigned value) const
+  {
+    return l4vbus_gpio_multi_config_pad(_bus.cap(), _dev, mask.offset,
+                                        mask.mask, func, value);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_multi_get()
+   * \note \a vbus and \a handle are implicit
+   */
+  int get(unsigned offset, unsigned *data) const
+  {
+    return l4vbus_gpio_multi_get(_bus.cap(), _dev, offset, data);
+  }
+
+  /**
+   * \copydoc l4vbus_gpio_multi_set()
+   * \note \a vbus and \a handle are implicit
+   */
+  int set(Pin_slice const &mask, unsigned data)
+  {
+    return l4vbus_gpio_multi_set(_bus.cap(), _dev, mask.offset,
+                                 mask.mask, data);
+  }
+
+  /**
+   * \brief Get Gpio_pin for a specific pin of this Gpio_module
+   *
+   * \param pin GPIO pin number to get Gpio_pin for.
+   * \return    Gpio_pin
+   */
+  Gpio_pin pin(unsigned pin) const
+  {
+    return Gpio_pin(*this, pin);
+  }
+
+protected:
+  Gpio_module() {}
+};
+
+}

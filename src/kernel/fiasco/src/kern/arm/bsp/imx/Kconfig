@@ -1,0 +1,71 @@
+# PF: IMX
+# PFDESCR: Freescale i.MX
+# PFDEPENDS: ARM
+
+choice
+	prompt "Freescale i.MX"
+	default PF_IMX_51
+
+config PF_IMX_21
+	bool "i.MX21"
+	depends on PF_IMX
+	select CAN_ARM_CPU_926
+	help
+	  Choose for i.MX21.
+
+config PF_IMX_35
+	bool "i.MX35"
+	depends on PF_IMX
+	select CAN_ARM_CPU_1136
+        help
+          Choose for i.MX35 platform.
+
+config PF_IMX_51
+	bool "i.MX51"
+	depends on PF_IMX
+	select CAN_ARM_CPU_CORTEX_A8
+	help
+	  Choose for i.MX51.
+
+# remove comment when actually tested...
+#config PF_IMX_53
+#	bool "i.MX53"
+#	depends on PF_IMX
+#	select CAN_ARM_CPU_CORTEX_A8
+#	help
+#	  Choose for i.MX53.
+
+config PF_IMX_6
+        bool "i.MX6"
+        depends on PF_IMX
+        select CAN_ARM_CPU_CORTEX_A9
+	select CAN_ARM_CACHE_L2CXX0
+        help
+          Choose for i.MX6 platform.
+
+endchoice
+
+choice
+        prompt "UART"
+        default PF_IMX_UART_NR_2
+        depends on PF_IMX_6
+
+config PF_IMX_UART_NR_1
+        bool "Use UART 1"
+
+config PF_IMX_UART_NR_2
+        bool "Use UART 2"
+
+endchoice
+
+config PF_IMX_UART_NR
+        int
+        default 1 if PF_IMX_UART_NR_1
+        default 2 if PF_IMX_UART_NR_2
+
+config PF_IMX_RAM_PHYS_BASE
+	hex
+	default 0xc0000000 if PF_IMX_21
+	default 0x80000000 if PF_IMX_35
+	default 0x90000000 if PF_IMX_51
+        default 0x10000000 if PF_IMX_6

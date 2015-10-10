@@ -202,6 +202,7 @@ Jdb_disasm::show(Address virt, Space *task, int level, bool do_clear_screen = fa
 	  char stat_str[4] = { "   " };
 
 	  Kconsole::console()->getchar_chance();
+          Jdb::clear_to_eol();
 
 	  if ((symbol = Jdb_symbol::match_addr_to_symbol(addr, trans_task)))
 	    {
@@ -237,9 +238,9 @@ Jdb_disasm::show(Address virt, Space *task, int level, bool do_clear_screen = fa
               stat_str[1] = '0' + i - 1;
             }
 
-	  printf("%s" L4_PTR_FMT "%s%s  ", 
+	  printf("%s" L4_PTR_FMT "%-8s%s",
 	         addr == enter_addr ? Jdb::esc_emph : "", addr, stat_str,
-		 addr == enter_addr ? "\033[m" : "");
+		 addr == enter_addr ? Jdb::esc_normal : "");
 	  show_disasm_line(
 #ifdef CONFIG_BIT32
 		           -64,

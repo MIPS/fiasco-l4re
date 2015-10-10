@@ -129,6 +129,7 @@ public:
   static char  esc_mark[];
   static char  esc_line[];
   static char  esc_symbol[];
+  static char  esc_normal[];
 
 };
 
@@ -1117,7 +1118,7 @@ char Jdb::esc_emph2[]    = "\033[32;1m";
 char Jdb::esc_mark[]     = "\033[35;1m";
 char Jdb::esc_line[]     = "\033[37m";
 char Jdb::esc_symbol[]   = "\033[33;1m";
-
+char Jdb::esc_normal[]   = "\033[m";
 
 
 

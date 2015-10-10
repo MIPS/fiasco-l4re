@@ -11,6 +11,12 @@ EXTENSION class Jdb_tcb
 };
 
 IMPLEMENT
+Address Jdb_tcb_ptr::entry_ip() const
+{
+  return top_value(-10);
+}
+
+IMPLEMENT
 void Jdb_tcb::print_entry_frame_regs(Thread *)
 {
   Jdb_entry_frame *ef = Jdb::get_entry_frame(Jdb::current_cpu);

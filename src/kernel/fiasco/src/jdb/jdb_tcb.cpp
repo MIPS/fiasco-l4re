@@ -83,6 +83,8 @@ public:
   inline Mword top_value(int offs) const
   { return *((Mword*)(Cpu::stack_align(_base + Context::Size)) + offs); }
 
+  virtual Address entry_ip() const;
+
   inline Address base() const
   { return _base; }
 
@@ -398,7 +400,7 @@ Jdb_disasm_view::show(Jdb_tcb_ptr const &p, Space *s, bool dump_only)
   if (!Jdb_disasm::avail())
     return;
 
-  Address disass_addr = p.top_value(-5);
+  Address disass_addr = p.entry_ip();
   if (dump_only)
     {
       for (unsigned i = 0; i < 20; ++i)

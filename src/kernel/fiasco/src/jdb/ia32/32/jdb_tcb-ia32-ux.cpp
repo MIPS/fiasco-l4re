@@ -15,6 +15,11 @@ EXTENSION class Jdb_tcb
 
 };
 
+IMPLEMENT
+Address Jdb_tcb_ptr::entry_ip() const
+{
+  return top_value(-5);
+}
 
 IMPLEMENT
 void

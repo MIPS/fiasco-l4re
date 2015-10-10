@@ -12,6 +12,12 @@ EXTENSION class Jdb_tcb
   };
 };
 
+IMPLEMENT
+Address Jdb_tcb_ptr::entry_ip() const
+{
+  return top_value(-5);
+}
+
 PRIVATE static
 void
 Jdb_tcb::print_regs_invalid_tid()

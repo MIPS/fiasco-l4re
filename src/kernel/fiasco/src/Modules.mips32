@@ -178,7 +178,7 @@ INTERFACES_JDB		:= jdb jdb_attach_irq jdb_core jdb_scheduler jdb_entry_frame \
 			   jdb_thread_list jdb_sender_list jdb_util kern_cnt         \
 			   push_console jdb_regex jdb_disasm jdb_bp            \
 			   jdb_tbuf_output jdb_tbuf_show jdb_trace_set \
-			   jdb_utcb jdb_log \
+			   jdb_utcb jdb_log jdb_dump \
 			   jdb_kern_info_kmem_alloc jdb_mapdb \
 			   jdb_kern_info jdb_kern_info_kip \
 			   jdb_input_task jdb_kern_info_data jdb_counters jdb_report

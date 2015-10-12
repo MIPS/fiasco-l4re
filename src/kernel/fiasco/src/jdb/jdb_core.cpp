@@ -150,6 +150,7 @@ IMPLEMENTATION:
 #include "jdb_prompt_ext.h"
 #include "jdb_screen.h"
 #include "processor.h"
+#include "jdb.h"
 
 bool Jdb_core::short_mode = true;
 int  Jdb_core::next_char  = -1;
@@ -856,6 +857,19 @@ public:
 
 static Help_m help_m INIT_PRIORITY(JDB_MODULE_INIT_PRIO);
 
+PUBLIC
+void Help_m::extra_help(size_t const tab_width, unsigned &line)
+{
+  const size_t xpos = 2;
+
+  printf("%s[NAVIGATION]%s Many commands recognize these navigation sequences\n",
+      Jdb::esc_emph, Jdb::esc_normal);
+  line++;
+  printf("  %-*s%s", tab_width - xpos, "h,j,k,l", "Navigate Left, Down, Up, Right\n");
+  line++;
+  printf("  %-*s%s", tab_width - xpos, "H,J,K,L", "Navigate Top/Back, PageDown, PageUp, End\n");
+  line++;
+}
 
 PUBLIC
 Jdb_module::Action_code Help_m::action( int, void *&, char const *&, int & )
@@ -871,6 +885,7 @@ Jdb_module::Action_code Help_m::action( int, void *&, char const *&, int & )
   unsigned line = 0;
 
   puts("");
+  extra_help(tab_width, line);
   for (Jdb_category::List::Const_iterator c = Jdb_category::categories.begin();
        c != Jdb_category::categories.end(); ++c)
     {

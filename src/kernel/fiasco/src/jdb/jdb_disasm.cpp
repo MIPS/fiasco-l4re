@@ -253,8 +253,11 @@ Jdb_disasm::show(Address virt, Space *task, int level, bool do_clear_screen = fa
       static char const * const line_mode[] = { "", "[Source]", "[Headers]" };
       static char const * const syntax_mode[] = { "[AT&T]", "[Intel]" };
       Jdb::printf_statline("dis", "<Space>=lines mode",
-			   "<" L4_PTR_FMT "> task %-3p  %-9s  %-7s",
-			   virt, task, line_mode[(int)show_lines], 
+			   task ? "<" L4_PTR_FMT "> task %lx  %-9s  %-7s" :
+                                  "<" L4_PTR_FMT "> physical, task %lx %-9s  %-7s",
+			   virt,
+                           task ? Kobject_dbg::pointer_to_id(task) : 0,
+                           line_mode[(int)show_lines],
 			   syntax_mode[(int)show_intel_syntax]);
 
       Jdb::cursor(Jdb_screen::height(), 6);

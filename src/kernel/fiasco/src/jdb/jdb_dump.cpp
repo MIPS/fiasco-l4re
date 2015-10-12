@@ -17,6 +17,7 @@ IMPLEMENTATION:
 #include "jdb_table.h"
 #include "jdb_input.h"
 #include "jdb_input_task.h"
+#include "jdb_kobject.h"
 #include "jdb_module.h"
 #include "jdb_screen.h"
 #include "jdb_symbol.h"
@@ -90,8 +91,8 @@ Jdb_dump::print_statline(unsigned long row, unsigned long col)
       (dump_type==D_MODE)
       ? "e=edit u=disasm D=dump <Space>=mode <CR>=goto addr"
       : "<Space>=mode",
-      task ? "%c<" L4_PTR_FMT "> task %p" : "%c<" L4_PTR_FMT "> physical",
-      dump_type, virt(row,col), task);
+      task ? "%c<" L4_PTR_FMT "> task %lx" : "%c<" L4_PTR_FMT "> physical",
+      dump_type, virt(row,col), Kobject_dbg::pointer_to_id(task));
 }
 
 IMPLEMENT
@@ -222,6 +223,7 @@ Jdb_dump::key_pressed(int c, unsigned long &row, unsigned long &col)
       return Nothing;
 
     case KEY_CURSOR_HOME: // return to previous or go home
+    case 'H':
       if (level == 0)
 	{
 	  Address v = virt(row, col);
@@ -240,6 +242,7 @@ Jdb_dump::key_pressed(int c, unsigned long &row, unsigned long &col)
       return Back;
 
     case KEY_CURSOR_END:
+    case 'L':
 	{
 	  Address v = virt(row, col);
 	  if ((v & ~Config::PAGE_MASK) >> 2 == 0x3ff)

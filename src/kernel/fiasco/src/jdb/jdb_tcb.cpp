@@ -435,7 +435,7 @@ Jdb_tcb::at_jdb_enter()
       // clear any keystrokes in queue
       Jdb::set_next_cmd(0);
       Jdb::push_cons()->push('t');
-      Jdb::push_cons()->push(' ');
+      Jdb::push_cons()->push(KEY_RETURN);
     }
 }
 
@@ -657,7 +657,7 @@ dump_stack:
       _stack_view.highlight(false);
       Jdb::cursor(Jdb_screen::height(), 6);
 
-      if (c == KEY_CURSOR_HOME && level > 0)
+      if ((c == KEY_CURSOR_HOME || c == 'H') && level > 0)
         return GO_BACK;
 
       if (!_stack_view.handle_key(c, &redraw))

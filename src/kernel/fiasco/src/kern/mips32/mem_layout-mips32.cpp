@@ -96,7 +96,7 @@ Mem_layout::phys_to_pmem (Address addr)
   if (IS_LOW512(addr) || (addr == CKSEG0ADDR(addr)))
     return CKSEG0ADDR(addr);
 
-  return ~0UL;
+  return Invalid_address;
 }
 
 PUBLIC static

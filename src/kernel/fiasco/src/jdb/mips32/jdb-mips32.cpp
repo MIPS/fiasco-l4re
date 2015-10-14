@@ -131,7 +131,7 @@ Jdb::access_mem_task(Address virt, Space * task)
       if (Mem_layout::in_kernel(virt))
 	{
 	  phys = Kmem::virt_to_phys((void *)virt);
-	  if (phys == (Address)-1)
+	  if (phys == Invalid_address)
 	    return 0;
 
 	}
@@ -142,15 +142,15 @@ Jdb::access_mem_task(Address virt, Space * task)
     {
       phys = Address(task->virt_to_phys(virt));
 
-      if (phys == (Address)-1)
+      if (phys == Invalid_address)
 	phys = task->virt_to_phys_s0((void *)virt);
 
-      if (phys == (Address)-1)
+      if (phys == Invalid_address)
 	return 0;
     }
 
   unsigned long addr = Mem_layout::phys_to_pmem(phys);
-  if (addr == (Address)-1)
+  if (addr == Invalid_address)
     {
 #warning KYMAXXX Jdb::access_mem_task tmp page map broken for mips; also no superpage
       Mem_unit::flush_vdcache();

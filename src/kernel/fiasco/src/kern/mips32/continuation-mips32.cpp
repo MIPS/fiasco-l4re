@@ -20,12 +20,12 @@ private:
   Mword   _status;
 
 public:
-  Continuation() : _ip(~0UL) {}
+  Continuation() : _ip(Invalid_address) {}
 
   typedef Return_frame User_return_frame;
 
   bool valid() const
-  { return _ip != ~0UL; }
+  { return _ip != Invalid_address; }
 
   Address ip() const { return _ip; }
   void ip(Address ip) { _ip = ip; }
@@ -63,7 +63,7 @@ public:
     dst->status = _status;
   }
 
-  void clear() { _ip = ~0UL; }
+  void clear() { _ip = Invalid_address; }
 
   void restore(Return_frame *regs)
   {

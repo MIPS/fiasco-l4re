@@ -132,7 +132,7 @@ Pdir::virt_to_phys(Address virt) const
   Virt_addr va(virt);
   auto i = walk(va);
   if (!i.is_valid())
-    return ~0;
+    return Invalid_address;
 
   return i.page_addr() | cxx::get_lsb(virt, i.page_order());
 }
@@ -147,7 +147,7 @@ Pdir::virt_to_phys(Address virt) const
   auto i = walk(Virt_addr(virt));
 
   //if (!i.is_valid())
-    return ~0UL;
+    return Invalid_address;
 
 #ifdef FIX_THIS
   Address phys;

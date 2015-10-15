@@ -64,9 +64,21 @@ extern "C" void sys_kdb_ke()
 
   if (static_cast<Thread::Kernel_entry_op>(kdb_ke_op) == Thread::Op_kdebug_text)
     {
-      Mword kdb_ke_text = ts->r[Syscall_frame::REG_T0];
-      strncpy(str, (char *)(kdb_ke_text), sizeof(str));
-      str[sizeof(str)-1] = 0;
+      int from_user = MIPS_USERMODE(ts->status);
+      char const *kdb_ke_str =
+        reinterpret_cast<char const *>(ts->r[Syscall_frame::REG_T0]);
+
+      if (t->space()->virt_to_phys(reinterpret_cast<Address>(kdb_ke_str))
+          != Invalid_address)
+        {
+          for (unsigned i = 0; i < sizeof(str); ++i)
+            {
+              str[i] = t->space()->peek(kdb_ke_str + i, from_user);
+              if (str[i] == 0)
+                break;
+            }
+          str[sizeof(str)-1] = 0;
+        }
     }
 
   kdb_ke(str);

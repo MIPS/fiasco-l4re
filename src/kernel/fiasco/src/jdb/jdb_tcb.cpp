@@ -821,7 +821,15 @@ Jdb_tcb::action(int cmd, void *&args, char const *&fmt, int &next_char)
           putchar('\n');
         }
       else if (args == &tcb_addr)
-        show((Thread*)tcb_addr, 0, false);
+        {
+          Kobject_dbg::Iterator i = Kobject_dbg::pointer_to_obj((void*)tcb_addr);
+          Kobject *k = Kobject::from_dbg(i);
+          Thread *t = Kobject::dcast<Thread_object *>(k);
+          if (t)
+            show(t, 0, false);
+          else
+            printf("\nNot a valid tcb addr\n");
+        }
       else
         {
           Thread *t = Kobject::dcast<Thread_object *>(threadid);

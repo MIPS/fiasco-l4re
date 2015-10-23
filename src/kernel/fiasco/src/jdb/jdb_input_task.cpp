@@ -97,7 +97,7 @@ Jdb_input_task_addr::action(void *&args, char const *&fmt, int &next_char)
     {
       _space = Kobject::dcast<Task *>(_task);
 
-      if (_task && !space())
+      if (!space())
 	{
 	  _task = 0;
 	  puts(" invalid task");

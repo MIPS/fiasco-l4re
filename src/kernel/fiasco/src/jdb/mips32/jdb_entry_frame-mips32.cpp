@@ -9,9 +9,6 @@ class Jdb_entry_frame : public Trap_state
 public:
   Address_type from_user() const;
   Address ip() const;
-  bool debug_trap() const;
-  bool debug_sequence() const;
-  bool debug_ipi() const;
 };
 
 class Jdb_output_frame : public Jdb_entry_frame
@@ -47,23 +44,30 @@ IMPLEMENTATION[mips32]:
 #include <cstdio>
 #include "processor.h"
 
-IMPLEMENT inline
+
+PUBLIC inline NEEDS["trap_state.h"]
 bool
 Jdb_entry_frame::debug_trap() const
 { return (error_code ==
     (Trap_state::Exc_code_Bp | Trap_state::Jdb_debug_trap)); }
 
-IMPLEMENT inline
+PUBLIC inline NEEDS["trap_state.h"]
 bool
 Jdb_entry_frame::debug_sequence() const
 { return (error_code ==
     (Trap_state::Exc_code_Bp | Trap_state::Jdb_debug_sequence)); }
 
-IMPLEMENT inline
+PUBLIC inline NEEDS["trap_state.h"]
 bool
 Jdb_entry_frame::debug_ipi() const
 { return (error_code ==
     (Trap_state::Exc_code_Bp | Trap_state::Jdb_debug_ipi)); }
+
+PUBLIC inline NEEDS["trap_state.h"]
+bool
+Jdb_entry_frame::debug_breakpoint() const
+{ return (error_code ==
+    (Trap_state::Exc_code_Bp | Trap_state::Jdb_debug_break)); }
 
 IMPLEMENT inline NEEDS["cp0_status.h"]
 Address_type

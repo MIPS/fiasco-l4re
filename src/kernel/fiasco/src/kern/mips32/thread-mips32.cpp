@@ -69,6 +69,7 @@ thread_handle_trap(Trap_state *ts, unsigned cpu, bool is_guestcontext)
         return handle_tlb_exceptions(ts, cpu, is_guestcontext);
 #ifdef CONFIG_JDB
       case Trap_state::Exc_code_Bp:
+        Thread::set_debug_errorcode(ts);
         return Thread::call_nested_trap_handler(ts);
 #endif
       case Trap_state::Exc_code_CpU:

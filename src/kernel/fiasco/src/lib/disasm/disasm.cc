@@ -203,6 +203,7 @@ disasm_bytes(char *buffer, unsigned len, Address addr,
   if (out_len)
     out_buf[--out_len] = '\0';
 
+#if !defined CONFIG_MIPS32
   /* test for special L4 opcodes */
   if (my_get_data(addr) == 0xcc && (len = special_l4_ops(addr+1)))
     return len;
@@ -210,6 +211,7 @@ disasm_bytes(char *buffer, unsigned len, Address addr,
   /* one step back for special L4 opcodes */
   if (my_get_data(addr-1) == 0xcc && (len = special_l4_ops(addr)))
     return len-1;
+#endif
 
   INIT_DISASSEMBLE_INFO(dis_info, NULL, my_printf);
   

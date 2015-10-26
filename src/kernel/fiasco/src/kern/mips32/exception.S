@@ -44,33 +44,6 @@ syscall_table:
     .set noreorder
     .set noat
 
-/* pass JDB trap code to Thread::call_nested_trap_handler */
-.macro DEBUGGER_ENTRY Jdb_trap_code
-#ifdef CONFIG_JDB
-    REG_LI  t0, \Jdb_trap_code
-    break
-#endif
-    j ra
-    nop
-.endm
-
-LEAF(kern_kdebug_entry)
-    /* Trap_state::Jdb_debug_trap */
-    DEBUGGER_ENTRY 0x00010000
-END(kern_kdebug_entry)
-
-LEAF(kern_kdebug_sequence_entry)
-    /* Trap_state::Jdb_debug_sequence */
-    DEBUGGER_ENTRY 0x00020000
-END(kern_kdebug_sequence_entry)
-
-#ifdef CONFIG_MP
-LEAF(kern_kdebug_ipi_entry)
-    /* Trap_state::Jdb_debug_ipi */
-    DEBUGGER_ENTRY 0x00030000
-END(kern_kdebug_ipi_entry)
-#endif
-
 /*
  * Main Exception Handler
  *
@@ -1245,4 +1218,3 @@ resume_to_vz_guest:
 resume_to_vz_guest_exit:
   eret                                  # return to guest
   .end resume_to_vz_guest
-

@@ -58,7 +58,7 @@ Address Kmem::virt_to_phys(const void *addr)
   Address a = reinterpret_cast<Address>(addr);
 
   if (EXPECT_TRUE(Mem_layout::in_pmem(a)))
-    return Mem_layout::pmem_to_phys(a);
+    return a;
 
   return kdir()->virt_to_phys(a);
 }

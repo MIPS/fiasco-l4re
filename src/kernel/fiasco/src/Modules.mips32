@@ -191,7 +191,7 @@ jdb_IMPL		:= jdb jdb-ansi jdb-mips32 jdb-thread
 jdb_tcb_IMPL		:= jdb_tcb jdb_tcb-mips32
 jdb_entry_frame_IMPL	:= jdb_entry_frame-mips32
 jdb_trace_set_IMPL	:= jdb_trace_set jdb_trace_set-mips32
-jdb_bp			:= jdb_bp
+jdb_bp_IMPL		:= jdb_bp-mips32
 jdb_kern_info_IMPL	:= jdb_kern_info jdb_kern_info-pci \
 			   jdb_kern_info-mips32 jdb_kern_info-cpu-mips32
 			   # jdb_kern_info-bench jdb_kern_info-bench-mips32

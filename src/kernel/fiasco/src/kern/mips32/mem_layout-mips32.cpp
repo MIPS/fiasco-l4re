@@ -89,7 +89,7 @@ IMPLEMENTATION [mips32]:
 #include <cassert>
 #include <kdb_ke.h>
 
-PUBLIC static inline NEEDS[<cassert>]
+PUBLIC static inline
 Address
 Mem_layout::phys_to_pmem (Address addr)
 {

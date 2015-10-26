@@ -35,7 +35,6 @@ public:
   void init(bool is_boot_cpu = false);
   static void early_init();
 
-  static const Unsigned64 _frequency = Config::cpu_frequency * 1000000;
   Unsigned64 frequency() const { return _frequency; }
   static Per_cpu<Cpu> cpus;
   static Cpu *boot_cpu() { return _boot_cpu; }
@@ -67,6 +66,7 @@ public:
 
 private:
 
+  static const Unsigned64 _frequency = Config::cpu_frequency * 1000000;
   static Cpu *_boot_cpu;
   Cpu_phys_id _phys_id;
   static unsigned long _ns_per_cycle;

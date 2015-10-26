@@ -14,7 +14,6 @@ EXTENSION class Thread
 public:
   typedef void (*Dbg_extension_entry)(Thread *t, Trap_state *ts);
   static Dbg_extension_entry dbg_extension[64];
-  static int call_nested_trap_handler(Trap_state *ts) asm ("call_nested_trap_handler");
 
   enum Kernel_entry_op
   {
@@ -24,7 +23,7 @@ public:
   };
 
 private:
-  static Trap_state::Handler nested_trap_handler FIASCO_FASTCALL;
+  static Trap_state::Handler nested_trap_handler;
 };
 
 //------------------------------------------------------------------------------
@@ -33,16 +32,19 @@ IMPLEMENTATION [mips32 && debug]:
 #include "kernel_task.h"
 #include "mem_layout.h"
 #include "thread.h"
+#include "cpu.h"
+#include "kdb_ke.h"
+#include "inst.h"
 
 #include <cstring>
 
 Thread::Dbg_extension_entry Thread::dbg_extension[64];
-Trap_state::Handler Thread::nested_trap_handler FIASCO_FASTCALL;
+Trap_state::Handler Thread::nested_trap_handler;
 
 extern "C" void sys_kdb_ke()
 {
   cpu_lock.lock();
-  char str[32] = "BREAK ENTRY";
+  char str[32] = "USER ENTRY";
   Thread *t = current_thread();
   Entry_frame *regs = t->regs();
   // Use the Entry_frame to get the enclosing Trap_state frame
@@ -84,7 +86,7 @@ extern "C" void sys_kdb_ke()
   kdb_ke(str);
 }
 
-IMPLEMENT
+PUBLIC static
 int
 Thread::call_nested_trap_handler(Trap_state *ts)
 {
@@ -108,8 +110,6 @@ Thread::call_nested_trap_handler(Trap_state *ts)
 
   if (Kernel_task::kernel_task() != m)
     Kernel_task::kernel_task()->make_current();
-
-  ts->set_errorcode(ts->error() | ts->r[Syscall_frame::REG_T0]);
 
   Mword dummy1, tmp, ret;
   {
@@ -146,7 +146,9 @@ Thread::call_nested_trap_handler(Trap_state *ts)
 	: "memory");
 
     ret = _ts;
-    ts->epc +=4;
+
+    if (!ts->is_debug_break_exception())
+      ts->epc += 4;
   }
 
   // the jdb-cpu might have changed things we shouldn't miss!
@@ -158,12 +160,57 @@ Thread::call_nested_trap_handler(Trap_state *ts)
   return ret;
 }
 
+PUBLIC static
+void
+Thread::set_debug_errorcode(Trap_state *ts)
+{
+  union mips_instruction insn;
+  int from_user = MIPS_USERMODE(ts->status);
+  Mword epc = ts->epc;
+
+  // NOTE: During a nested Bp exception (where Status.EXL is already set) the
+  // architecture does not update epc with the nested exception pc. Using
+  // badinstr allows proper identification of the breakpoint code (without it
+  // the wrong epc is read). Nevertheless, the nested breakpoint is not handled
+  // correctly: the correct epc can only be known by adding support for the
+  // optional Nested Fault feature.
+  // TODO detect nested Bp and fail gracefully
+  if (cpu_has_badinstr)
+    insn.word = read_c0_badinstr();
+  else
+    {
+      // epc may not always be correct, as explained above
+      insn.word = current_thread()->space()->peek((Mword*)epc, from_user);
+    }
+
+  if (!kdb_ke_is_break_opcode(insn.word))
+    return;
+
+  switch (insn.b_format.code)
+  {
+    case KDB_KE_USER_TRAP:
+      ts->set_errorcode(ts->error() | Trap_state::Jdb_debug_trap);
+      break;
+    case KDB_KE_USER_SEQ:
+      ts->set_errorcode(ts->error() | Trap_state::Jdb_debug_sequence);
+      break;
+    case KDB_KE_IPI:
+      ts->set_errorcode(ts->error() | Trap_state::Jdb_debug_ipi);
+      break;
+    case KDB_KE_BREAKPOINT:
+      ts->set_errorcode(ts->error() | Trap_state::Jdb_debug_break);
+      break;
+    default:
+      break;
+  }
+}
+
 IMPLEMENTATION [mips32 && !debug]:
 
 extern "C" void sys_kdb_ke()
 {}
 
-PRIVATE static inline
+PUBLIC static inline
 int
 Thread::call_nested_trap_handler(Trap_state *)
 { return -1; }

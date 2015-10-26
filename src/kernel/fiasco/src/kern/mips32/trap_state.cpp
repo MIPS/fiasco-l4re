@@ -8,7 +8,6 @@ INTERFACE:
 #include "l4_types.h"
 #include "entry_frame.h"
 #include "mipsdefs.h"
-#include "processor.h"
 #include "paging.h"
 
 class Trap_state_regs
@@ -81,6 +80,7 @@ public:
     Jdb_debug_trap         = 0x00010000,
     Jdb_debug_sequence     = 0x00020000,
     Jdb_debug_ipi          = 0x00030000,
+    Jdb_debug_break        = 0x00040000,
     Jdb_trap_code_mask     = 0x000f0000, /* Mask for JDB interface trap codes */
   };
 
@@ -167,7 +167,16 @@ Trap_state::set_pagefault(Mword pfa, Mword error)
 PUBLIC inline
 bool
 Trap_state::is_debug_exception() const
-{ return false; }
+{
+  return (error_code & Exc_code_Bp);
+}
+
+PUBLIC inline
+bool
+Trap_state::is_debug_break_exception() const
+{
+  return (error_code == (Exc_code_Bp | Trap_state::Jdb_debug_break));
+}
 
 PUBLIC
 void
